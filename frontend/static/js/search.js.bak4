@@ -21,7 +21,6 @@ class SearchInterface {
 
         this.setupSearch();
         this.loadSearchResults(); // Initial load when page loads
-        console.log("DEBUG: SearchInterface initialized. Loading initial results."); // DEBUG: Initial load check
     }
 
     setupSearch() {
@@ -85,8 +84,6 @@ class SearchInterface {
             per_page: this.resultsPerPage
         });
 
-        console.log("DEBUG: Calling /api/search with params:", params.toString()); // DEBUG: API call params
-
         try {
             this.resultsContainer.innerHTML = '<p class="no-results-message">Loading results...</p>'; // Loading indicator
 
@@ -96,32 +93,26 @@ class SearchInterface {
             }
             const data = await response.json();
 
-            console.log("DEBUG: Received data from /api/search:", data); // DEBUG: Raw data from backend
-
             // --- IMPORTANT: This part is adjusted to match your backend's JSON structure ---
             // Your backend's /api/search endpoint returns data like:
             // { documents: [...], total_pages: X, current_page: Y }
             this.renderResults(data.documents);
             this.updatePagination(data.current_page, data.total_pages);
-            console.log("DEBUG: renderResults and updatePagination called."); // DEBUG: Confirmation
 
         } catch (error) {
-            console.error('ERROR: Error fetching search results:', error); // DEBUG: Error logging
+            console.error('Error fetching search results:', error);
             this.resultsContainer.innerHTML = `<p class="no-results-message">Error loading search results: ${error.message}</p>`;
             this.updatePagination(1, 1); // Reset pagination on error
         }
     }
 
     renderResults(documents) {
-        console.log("DEBUG: Entering renderResults. Documents received:", documents); // DEBUG: Documents received by renderResults
         this.resultsContainer.innerHTML = ''; // Clear previous results
         if (documents && documents.length > 0) {
             documents.forEach(doc => {
-                console.log("DEBUG: Processing document:", doc.id, doc.title); // DEBUG: Each document being processed
                 const card = document.createElement('div');
                 card.className = 'document-card';
-                // Using a temporary variable to inspect the HTML string before assignment
-                const cardHtml = `
+                card.innerHTML = `
                     <div class="card-thumbnail">
                         <img src="${doc.thumbnail_url || '/static/images/default_pdf_thumbnail.png'}" alt="Document Thumbnail">
                     </div>
@@ -137,14 +128,9 @@ class SearchInterface {
                         </div>
                     </div>
                 `;
-                console.log("DEBUG: Generated card HTML for document:", doc.id, cardHtml); // DEBUG: Generated HTML
-                card.innerHTML = cardHtml; // Assign the HTML
                 this.resultsContainer.appendChild(card);
-                console.log("DEBUG: Appended card for document:", doc.id); // DEBUG: Confirmation of append
             });
-            console.log("DEBUG: Finished rendering all documents."); // DEBUG: All documents rendered
         } else {
-            console.log("DEBUG: No documents to render."); // DEBUG: No documents path
             this.resultsContainer.innerHTML = '<p class="no-results-message">No documents found matching your criteria.</p>';
         }
     }
@@ -157,11 +143,9 @@ class SearchInterface {
 
         this.prevPageBtn.disabled = this.currentPage === 1;
         this.nextPageBtn.disabled = this.currentPage === this.totalPages;
-        console.log(`DEBUG: Pagination updated to Page ${this.currentPage} of ${this.totalPages}`); // DEBUG: Pagination info
     }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     new SearchInterface();
-    console.log("DEBUG: DOMContentLoaded event fired. Initializing SearchInterface."); // DEBUG: DOM ready
 });
