@@ -1,6 +1,8 @@
 # backend/routes/search.py
 from flask import Blueprint, request, jsonify
-from backend.models.document import Document, Tag
+#from backend.models.document import Document, Tag
+from backend.models.document import Document
+from backend.models.tag import Tag # Import Tag from its dedicated file
 from sqlalchemy.orm import selectinload
 import traceback
 
