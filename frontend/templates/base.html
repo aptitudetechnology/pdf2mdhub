@@ -27,15 +27,6 @@
         <p> PDF2MD Hub</p>
     </footer>
 
-    <script>
-        // Example for dynamic year in footer (requires Flask-Moment or similar if rendered server-side)
-        // If rendered purely client-side, use JS Date object
-        document.addEventListener('DOMContentLoaded', () => {
-            const currentYearSpan = document.querySelector('.app-footer p');
-            if (currentYearSpan && currentYearSpan.textContent.includes('{{ moment().year }}')) {
-                currentYearSpan.textContent = currentYearSpan.textContent.replace('{{ moment().year }}', new Date().getFullYear());
-            }
-        });
-    </script>
+    
 </body>
 </html>
