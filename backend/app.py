@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timedelta 
 import subprocess
 import markdown
-# from PyPDF2 import PdfReader # Not strictly needed for conversion with pdf2md, but keeping for other potential PDF ops
+# from PyPDF2 import PdfReader # Not strictly needed for conversion with pdf2md, but keeping for other potential PDF operations
 from flask import Flask, request, jsonify, send_from_directory, render_template, url_for, redirect
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
