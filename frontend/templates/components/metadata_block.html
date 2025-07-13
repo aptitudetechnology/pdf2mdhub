@@ -9,7 +9,7 @@
         <li><strong>Tags:</strong>
             <div class="metadata-tags">
                 {% if document.tags %}
-                    {% for tag in document.tags.split(',') %}
+                   {% for tag in document.tags %}
                         <span class="tag">{{ tag.strip() }}</span>
                     {% endfor %}
                 {% else %}
