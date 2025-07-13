@@ -1,190 +1,155 @@
 import os
+from flask import Flask, request, jsonify, render_template, send_from_directory, url_for
+from werkzeug.utils import secure_filename
+from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.exc import SQLAlchemyError
+from datetime import datetime, timedelta
 import logging
-from datetime import datetime, timedelta 
-import subprocess
-import markdown
-# from PyPDF2 import PdfReader # Not strictly needed for conversion with pdf2md, but keeping for other potential PDF operations
-from flask import Flask, request, jsonify, send_from_directory, render_template, url_for, redirect
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
-from dotenv import load_dotenv
+import subprocess # Make sure this is imported
+import json # Make sure this is imported for tags
 
-# Load environment variables from .env file
-load_dotenv()
+# --- Configuration ---
+# Define the absolute path to the directory where this script is located
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+# Define the UPLOAD_FOLDER relative to the BASE_DIR
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
+ALLOWED_EXTENSIONS = {'pdf'}
+
+# Ensure the upload folder exists
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Flask App Initialization
 app = Flask(__name__,
-            static_folder='../frontend/static',
-            template_folder='../frontend/templates')
+            static_folder=os.path.join(BASE_DIR, '..', 'frontend', 'static'),
+            template_folder=os.path.join(BASE_DIR, '..', 'frontend', 'templates'))
 
-# Configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///pdf_documents.db')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'uploads')
-app.config['ALLOWED_EXTENSIONS'] = {'pdf'}
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB limit
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///documents.db' # Ensure this is correct
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # Recommended for SQLAlchemy
 
-# Ensure upload folder exists
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+# Database setup
+Base = declarative_base()
 
-# Initialize extensions (THIS IS THE ONLY PLACE IT SHOULD BE)
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
+class Document(Base):
+    __tablename__ = 'documents'
+    id = Column(Integer, primary_key=True)
+    title = Column(String(255), nullable=False)
+    filename = Column(String(255), nullable=False)
+    filepath = Column(String(500), nullable=False) # Path to the PDF
+    markdown_filepath = Column(String(500)) # Path to the converted Markdown
+    upload_date = Column(DateTime, default=datetime.utcnow)
+    status = Column(String(50), default='pending') # e.g., 'pending', 'converted', 'failed'
+    tags = relationship('Tag', secondary='document_tags', backref='documents') # Link to tags
 
-# REMOVE THESE TWO LINES BELOW, they are not needed for Flask-Migrate 3.0+
-# from flask_migrate import MigrateCommand
-# app.cli.add_command('db', MigrateCommand)
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'filename': self.filename,
+            'upload_date': self.upload_date.isoformat(),
+            'status': self.status,
+            'tags': [tag.name for tag in self.tags]
+        }
 
-# Configure Content Security Policy (CSP) headers
-@app.after_request
-def add_security_headers(response):
-    csp = (
-        "default-src 'self';"
-        "script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net;" # Keep jsdelivr if you still use any CDN resources
-        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;" # 'unsafe-inline' for inline styles if any
-        "img-src 'self' data:;" # data: for base64 encoded images
-        "font-src 'self' https://cdn.jsdelivr.net;"
-        "object-src 'none';"
-        "connect-src 'self';"
-        "frame-src 'self';" # Allow iframes from same origin, specifically for PDF viewer
-    )
-    response.headers['Content-Security-Policy'] = csp
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'DENY'
-    response.headers['X-XSS-Protection'] = '1; mode=block'
-    return response
+class Tag(Base):
+    __tablename__ = 'tags'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(50), unique=True, nullable=False)
 
-# Database Model
-class Document(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    original_name = db.Column(db.String(255), nullable=False)
-    file_path = db.Column(db.String(255), nullable=False)
-    upload_date = db.Column(db.DateTime, default=datetime.utcnow)
-    processed_date = db.Column(db.DateTime, nullable=True)
-    status = db.Column(db.String(50), default='pending') # pending, processing, completed, failed
-    markdown_content = db.Column(db.Text, nullable=True)
-    notes = db.Column(db.Text, nullable=True)
-    tags = db.relationship('Tag', secondary='document_tags', backref=db.backref('documents', lazy=True))
+class DocumentTag(Base):
+    __tablename__ = 'document_tags'
+    document_id = Column(Integer, ForeignKey('documents.id'), primary_key=True)
+    tag_id = Column(Integer, ForeignKey('tags.id'), primary_key=True)
 
-    def __repr__(self):
-        return f'<Document {self.original_name}>'
+engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'])
+Base.metadata.create_all(engine)
+Session = sessionmaker(bind=engine)
 
-class Tag(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(50), unique=True, nullable=False)
 
-    def __repr__(self):
-        return f'<Tag {self.name}>'
-
-# Association table for many-to-many relationship
-document_tags = db.Table('document_tags',
-    db.Column('document_id', db.Integer, db.ForeignKey('document.id'), primary_key=True),
-    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id'), primary_key=True)
-)
-
-# Utility Functions
+# Helper function to check allowed extensions
 def allowed_file(filename):
     return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def get_or_create_tag(tag_name):
-    tag = Tag.query.filter_by(name=tag_name).first()
-    if not tag:
-        tag = Tag(name=tag_name)
-        db.session.add(tag)
-        db.session.commit()
-    return tag
+# --- PDF to Markdown Conversion Function ---
+def convert_pdf_to_markdown(pdf_path, document_id):
+    logger.info(f"Started processing document ID: {document_id}")
+    session = Session()
+    document = session.query(Document).get(document_id) # Using query.get for now
+    if not document:
+        logger.error(f"Document with ID {document_id} not found in DB for conversion.")
+        session.close()
+        return None
 
-def convert_pdf_to_markdown(pdf_path):
-    """
-    Converts a PDF file to Markdown using the opendocsg/pdf2md tool.
-    This function will be called as a background task.
-    """
+    # Construct paths for the conversion
+    # We now use secure_filename for both input and output to ensure consistency
+    # and safely construct paths within the UPLOAD_FOLDER
+    
+    # pdf_path is already the full absolute path from the upload function
+    
+    # Calculate base name for the pdf2md tool (e.g., 'Invoice_')
+    base_name = os.path.splitext(os.path.basename(pdf_path))[0]
+    
+    # Construct the full absolute path for the output Markdown file
+    output_md_filename = f"{base_name}.md"
+    output_md_path = os.path.join(app.config['UPLOAD_FOLDER'], output_md_filename)
+
+    logger.info(f"Executing PDF to Markdown conversion command: pdf2md {pdf_path} {base_name}")
+    command = ['pdf2md', pdf_path, base_name]
+
     try:
-        # Define the output Markdown file path
-        output_md_path = pdf_path.replace('.pdf', '.md')
-
-        # Construct the command for opendocsg/pdf2md
-        # Assuming `pdf2md` is in your PATH.
-        # Check `pdf2md --help` for correct arguments if this command fails.
-        # Common usage: `pdf2md <input_pdf_path> -o <output_md_path>`
-        #command = ['pdf2md', str(pdf_path), '-o', str(output_md_path)]
-
-        # Assuming 'output_path' contains the full path including the desired filename without extension
-        # For example, if output_path is 'uploads/myfile.md', then you want 'myfile' as projectname.
-        # You might need to extract the base name from output_path.
-        output_basename = os.path.splitext(os.path.basename(output_path))[0]
-        command = ['pdf2md', pdf_path, output_basename]
-
-        logger.info(f"Executing PDF to Markdown conversion command: {' '.join(command)}")
-
-        # Execute the command
-        # capture_output=True captures stdout and stderr
-        # text=True decodes stdout/stderr as text
-        # check=True raises a CalledProcessError if the command returns a non-zero exit code
+        # Run the pdf2md command
         result = subprocess.run(command, capture_output=True, text=True, check=True)
 
-        logger.info(f"pdf2md stdout: {result.stdout}")
+        logger.info(f"pdf2md stdout: {result.stdout.strip()}")
         if result.stderr:
-            logger.warning(f"pdf2md stderr: {result.stderr}")
+            logger.warning(f"pdf2md stderr: {result.stderr.strip()}")
 
-        # Read the content from the generated Markdown file
-        if os.path.exists(output_md_path):
-            with open(output_md_path, 'r', encoding='utf-8') as f:
-                markdown_content = f.read()
-            os.remove(output_md_path) # Clean up the generated .md file
-            return markdown_content
-        else:
-            logger.error(f"pdf2md command executed, but no output file found at {output_md_path}")
-            return None
+        # Read the converted markdown content
+        if not os.path.exists(output_md_path):
+            raise FileNotFoundError(f"Markdown file not found after conversion: {output_md_path}")
+
+        with open(output_md_path, 'r', encoding='utf-8') as f:
+            markdown_content = f.read()
+
+        # Update document status and markdown_filepath in DB
+        document.status = 'converted'
+        document.markdown_filepath = output_md_path
+        session.commit()
+        logger.info(f"Successfully converted and updated document ID: {document_id}")
+        return markdown_content
 
     except subprocess.CalledProcessError as e:
         logger.error(f"Error converting PDF {pdf_path} using pdf2md. Command: {' '.join(e.cmd)}")
-        logger.error(f"pdf2md stdout: {e.stdout}")
-        logger.error(f"pdf2md stderr: {e.stderr}")
-        return None
+        logger.error(f"pdf2md stdout: {e.stdout.strip()}")
+        logger.error(f"pdf2md stderr: {e.stderr.strip()}")
+        document.status = 'conversion_failed'
+        session.commit()
+        raise Exception(f"PDF to Markdown conversion failed: {e.stderr.strip()}")
     except FileNotFoundError:
-        logger.error("Error: 'pdf2md' command not found. Is opendocsg/pdf2md installed and in your system's PATH?")
-        return None
+        logger.error(f"pdf2md command not found or markdown file not created for {pdf_path}. Ensure it's installed and in your system's PATH.")
+        document.status = 'conversion_failed'
+        session.commit()
+        raise Exception("pdf2md command not found or output file missing.")
     except Exception as e:
-        logger.error(f"An unexpected error occurred during PDF to Markdown conversion: {e}")
-        return None
+        logger.error(f"An unexpected error occurred during PDF to Markdown conversion: {e}", exc_info=True)
+        document.status = 'conversion_failed'
+        session.commit()
+        raise Exception(f"PDF to Markdown conversion failed: {e}")
+    finally:
+        session.close()
 
-# Background processing (simple simulation for now)
-# In a real application, use a task queue like Celery
-def process_document_task(document_id):
-    with app.app_context():
-        document = Document.query.get(document_id)
-        if not document:
-            logger.error(f"Document with ID {document_id} not found for processing.")
-            return
 
-        document.status = 'processing'
-        db.session.commit()
-        logger.info(f"Started processing document: {document.original_name} (ID: {document.id})")
+# --- Routes ---
 
-        try:
-            markdown_content = convert_pdf_to_markdown(document.file_path)
-
-            if markdown_content:
-                document.markdown_content = markdown_content
-                document.processed_date = datetime.utcnow()
-                document.status = 'completed'
-                logger.info(f"Successfully processed document: {document.original_name}")
-            else:
-                document.status = 'failed'
-                logger.error(f"Failed to get markdown content for document: {document.original_name}")
-            db.session.commit()
-
-        except Exception as e:
-            document.status = 'failed'
-            db.session.commit()
-            logger.exception(f"Error during markdown conversion for document {document.original_name}: {e}")
-
-# Routes
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -193,266 +158,199 @@ def index():
 def upload_page():
     return render_template('upload.html')
 
-@app.route('/viewer/<int:document_id>')
-def viewer_page(document_id):
-    document = Document.query.get_or_404(document_id)
-    return render_template('viewer.html', document=document)
-
 @app.route('/search')
 def search_page():
-    query = request.args.get('query', '')
-    tag_filter = request.args.get('tag', '')
+    return render_template('search.html')
 
-    documents_query = Document.query
-
-    if query:
-        documents_query = documents_query.filter(
-            (Document.original_name.ilike(f'%{query}%')) |
-            (Document.markdown_content.ilike(f'%{query}%')) |
-            (Document.notes.ilike(f'%{query}%'))
-        )
-
-    if tag_filter:
-        documents_query = documents_query.join(Document.tags).filter(Tag.name.ilike(f'%{tag_filter}%'))
-
-    documents = documents_query.order_by(Document.upload_date.desc()).all()
-    all_tags = Tag.query.all()
-    return render_template('search.html', documents=documents, query=query, tag_filter=tag_filter, all_tags=all_tags)
+@app.route('/viewer/<int:document_id>')
+def viewer_page(document_id):
+    session = Session()
+    document = session.query(Document).get(document_id) # Using query.get for now
+    session.close()
+    if document:
+        return render_template('viewer.html', document=document)
+    return "Document not found", 404
 
 
-# API Endpoints
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
     logger.info("--- START: POST /api/upload Request ---")
     if 'file' not in request.files:
         logger.warning("No file part in request.")
         return jsonify({'error': 'No file part'}), 400
-
+    
     file = request.files['file']
+    markdown_content_from_frontend = request.form.get('markdown_content')
+    tags_json = request.form.get('tags')
+    title = request.form.get('title')
 
     if file.filename == '':
         logger.warning("No selected file.")
         return jsonify({'error': 'No selected file'}), 400
 
     if file and allowed_file(file.filename):
-        original_name = file.filename
-        unique_filename = f"{os.urandom(16).hex()}_{original_name}"
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-        file.save(file_path)
-
-        new_document = Document(
-            original_name=original_name,
-            file_path=file_path,
-            status='pending'
-        )
-        db.session.add(new_document)
-        db.session.commit()
-        db.session.refresh(new_document) # Get the ID generated by the DB
-
-        # Trigger background processing (in a real app, this would be a task queue)
-        # For this simple example, we'll run it in a new thread or directly
-        # For non-blocking, a simple threading approach (not for production):
-        import threading
-        threading.Thread(target=process_document_task, args=(new_document.id,)).start()
-        logger.info(f"File uploaded and processing initiated for ID: {new_document.id}")
-        logger.info("--- END: POST /api/upload Request (201 - Success) ---")
-        return jsonify({
-            'message': 'File uploaded and processing started',
-            'document_id': new_document.id,
-            'original_name': new_document.original_name
-        }), 201
-    else:
-        logger.warning(f"File type not allowed: {file.filename}")
-        return jsonify({'error': 'File type not allowed'}), 400
-
-@app.route('/api/documents', methods=['GET'])
-def get_documents():
-    """Get a list of all documents, with optional search and filter."""
-    logger.info("--- START: GET /api/documents Request ---")
-
-    query = request.args.get('q', '') # 'q' for general query
-    tag_filter = request.args.get('tag', '') # 'tag' for tag filter
-    date_from_str = request.args.get('date_from')
-    date_to_str = request.args.get('date_to')
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
-
-    documents_query = Document.query
-
-    if query:
-        documents_query = documents_query.filter(
-            (Document.original_name.ilike(f'%{query}%')) |
-            (Document.markdown_content.ilike(f'%{query}%')) |
-            (Document.notes.ilike(f'%{query}%'))
-        )
-
-    if tag_filter:
-        documents_query = documents_query.join(Document.tags).filter(Tag.name.ilike(f'%{tag_filter}%'))
-
-    if date_from_str:
-        try:
-            date_from = datetime.strptime(date_from_str, '%Y-%m-%d')
-            documents_query = documents_query.filter(Document.upload_date >= date_from)
-        except ValueError:
-            logger.warning(f"Invalid date_from format: {date_from_str}")
-            # Optionally return an error or ignore
-
-    if date_to_str:
-        try:
-            date_to = datetime.strptime(date_to_str, '%Y-%m-%d')
-            # Add one day to include documents uploaded on date_to
-            documents_query = documents_query.filter(Document.upload_date < date_to + timedelta(days=1))
-        except ValueError:
-            logger.warning(f"Invalid date_to format: {date_to_str}")
-            # Optionally return an error or ignore
-
-    documents = documents_query.order_by(Document.upload_date.desc()).paginate(page=page, per_page=per_page, error_out=False)
-
-    documents_data = []
-    for doc in documents.items: # Iterate over items for paginated results
-        documents_data.append({
-            'id': doc.id,
-            'original_name': doc.original_name,
-            'upload_date': doc.upload_date.isoformat(),
-            'processed_date': doc.processed_date.isoformat() if doc.processed_date else None,
-            'status': doc.status,
-            'notes': doc.notes,
-            'tags': [tag.name for tag in doc.tags]
-        })
-
-    response_data = {
-        'documents': documents_data,
-        'total_documents': documents.total,
-        'total_pages': documents.pages,
-        'current_page': documents.page,
-        'per_page': documents.per_page,
-        'has_next': documents.has_next,
-        'has_prev': documents.has_prev
-    }
-
-    logger.info("--- END: GET /api/documents Request (200 - Success) ---")
-    return jsonify(response_data)
-
-@app.route('/api/documents/<int:document_id>', methods=['GET'])
-def get_document_details(document_id):
-    """Get details for a single document."""
-    logger.info(f"--- START: GET /api/documents/{document_id} Request ---")
-    document = Document.query.get_or_404(document_id)
-    document_data = {
-        'id': document.id,
-        'original_name': document.original_name,
-        'upload_date': document.upload_date.isoformat(),
-        'processed_date': document.processed_date.isoformat() if document.processed_date else None,
-        'status': document.status,
-        'markdown_content': document.markdown_content, # Raw markdown for API consumers
-        'notes': document.notes,
-        'tags': [tag.name for tag in document.tags]
-    }
-    logger.info(f"--- END: GET /api/documents/{document_id} Request (200 - Success) ---")
-    return jsonify(document_data)
-
-@app.route('/api/documents/<int:document_id>', methods=['PUT'])
-def update_document(document_id):
-    """Update document details (e.g., notes, tags)."""
-    logger.info(f"--- START: PUT /api/documents/{document_id} Request ---")
-    document = Document.query.get_or_404(document_id)
-    data = request.get_json()
-
-    if 'notes' in data:
-        document.notes = data['notes']
-
-    if 'tags' in data:
-        # Clear existing tags and add new ones
-        document.tags = []
-        for tag_name in data['tags']:
-            tag = get_or_create_tag(tag_name)
-            document.tags.append(tag)
-    
-    db.session.commit()
-    logger.info(f"Document {document_id} updated.")
-    logger.info(f"--- END: PUT /api/documents/{document_id} Request (200 - Success) ---")
-    return jsonify({'message': 'Document updated successfully'})
-
-@app.route('/api/documents/<int:document_id>', methods=['DELETE'])
-def delete_document(document_id):
-    """Delete a document and its associated file."""
-    logger.info(f"--- START: DELETE /api/documents/{document_id} Request ---")
-    document = Document.query.get_or_404(document_id)
-    try:
-        if os.path.exists(document.file_path):
-            os.remove(document.file_path)
-            logger.info(f"Deleted file: {document.file_path}")
+        # Generate a secure filename to prevent directory traversal attacks
+        filename = secure_filename(file.filename)
         
-        # Delete associated tags if they are no longer linked to any documents (optional cleanup)
-        # This part requires careful handling to avoid deleting tags still in use.
-        # For simplicity, we'll just delete the document and its associations.
-        db.session.delete(document)
-        db.session.commit()
-        logger.info(f"Document {document_id} and its file deleted successfully.")
-        logger.info(f"--- END: DELETE /api/documents/{document_id} Request (200 - Success) ---")
-        return jsonify({'message': 'Document deleted successfully'})
-    except Exception as e:
-        db.session.rollback()
-        logger.exception(f"Error deleting document {document_id} or its file.")
-        logger.info(f"--- END: DELETE /api/documents/{document_id} Request (500 - Server Error) ---")
-        return jsonify({'error': 'Failed to delete document'}), 500
+        # Prepend a unique ID to the filename to avoid collisions
+        unique_id = os.urandom(16).hex()
+        final_filename = f"{unique_id}_{filename}"
+        
+        # Construct the full absolute path where the PDF will be saved
+        pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], final_filename)
+        
+        try:
+            file.save(pdf_path)
+            logger.info(f"File saved to: {pdf_path}")
 
-@app.route('/api/documents/<int:document_id>/download', methods=['GET'])
-def download_pdf(document_id):
-    """Serve the original PDF file for download or viewing."""
-    logger.info(f"--- START: GET /api/documents/{document_id}/download Request ---")
-    document = Document.query.get_or_404(document_id)
-    directory = os.path.dirname(document.file_path)
-    filename = os.path.basename(document.file_path)
-    logger.info(f"Serving PDF: {filename} from {directory}")
-    logger.info(f"--- END: GET /api/documents/{document_id}/download Request (200 - Success) ---")
-    return send_from_directory(directory, filename, as_attachment=False, mimetype='application/pdf')
+            session = Session()
+            
+            # Create a new Document entry in the database
+            new_document = Document(
+                title=title,
+                filename=final_filename, # Store the unique filename
+                filepath=pdf_path,     # Store the full path to the PDF
+                status='uploaded' # Initial status
+            )
+
+            # Process tags
+            if tags_json:
+                try:
+                    tags_array = json.loads(tags_json)
+                    for tag_name in tags_array:
+                        tag = session.query(Tag).filter_by(name=tag_name).first()
+                        if not tag:
+                            tag = Tag(name=tag_name)
+                            session.add(tag)
+                        new_document.tags.append(tag)
+                except json.JSONDecodeError:
+                    logger.warning(f"Invalid JSON for tags: {tags_json}")
+            
+            session.add(new_document)
+            session.commit()
+            document_id = new_document.id
+            logger.info(f"File uploaded and processing initiated for ID: {document_id}")
+
+            # Initiate background conversion (you might use a task queue for production)
+            try:
+                # Call conversion here. The content will be saved to the DB in the function.
+                # The frontend's pdf2mdProcessor is for client-side display; backend handles server-side conversion.
+                converted_markdown = convert_pdf_to_markdown(pdf_path, document_id)
+                # No need to send markdown_content back directly if it's stored
+                # The frontend will fetch it via /api/documents/<id>/markdown
+            except Exception as e:
+                logger.error(f"Error initiating conversion task for document ID {document_id}: {e}")
+                # The convert_pdf_to_markdown function should update status to 'conversion_failed'
+                # but we can ensure here too if an exception prevents that.
+                session.rollback() # Rollback if something failed before commit
+                session.query(Document).filter_by(id=document_id).update({'status': 'conversion_failed'})
+                session.commit()
+                # Continue with the response even if conversion failed, indicating the upload was successful
+                # but conversion had an issue.
+
+            session.close()
+            return jsonify({'message': 'File uploaded successfully, processing initiated', 'document': new_document.to_dict()}), 201
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error during upload: {e}", exc_info=True)
+            session.rollback()
+            return jsonify({'error': 'Database error during upload.'}), 500
+        except Exception as e:
+            logger.error(f"An unexpected error occurred during file upload: {e}", exc_info=True)
+            return jsonify({'error': f'Server error during upload: {e}'}), 500
+    else:
+        logger.warning(f"Attempted to upload disallowed file type: {file.filename}")
+        return jsonify({'error': 'File type not allowed'}), 400
 
 @app.route('/api/documents/<int:document_id>/markdown', methods=['GET'])
 def get_document_markdown(document_id):
-    """
-    Get converted markdown content, rendered to HTML server-side for display.
-    Provides raw markdown content if specifically requested for download (not shown here).
-    """
     logger.info(f"--- START: GET /api/documents/{document_id}/markdown Request ---")
+    session = Session()
+    document = session.query(Document).get(document_id) # Using query.get for now
+    session.close()
+
+    if not document:
+        logger.warning(f"Markdown request for non-existent document ID: {document_id}")
+        return jsonify({'error': 'Document not found'}), 404
+
+    if document.status != 'converted' or not document.markdown_filepath or not os.path.exists(document.markdown_filepath):
+        logger.info(f"Markdown not yet available or conversion failed for ID: {document_id}. Status: {document.status}")
+        return jsonify({'error': 'Markdown content not yet available or conversion failed'}), 404
+
     try:
-        document = Document.query.get_or_404(document_id)
-
-        if not document.markdown_content:
-            logger.warning(f"Markdown content not found for document ID {document_id}. Status: {document.status}")
-            logger.info(f"--- END: GET /api/documents/{document_id}/markdown Request (404 - Not Processed) ---")
-            return jsonify({'error': 'Document not processed yet', 'status': document.status}), 404
-
-        # Convert Markdown to HTML here on the server for display
-        html_content = markdown.markdown(document.markdown_content)
-
-        logger.info(f"Returning HTML for document ID {document_id}.")
+        with open(document.markdown_filepath, 'r', encoding='utf-8') as f:
+            markdown_content = f.read()
         logger.info(f"--- END: GET /api/documents/{document_id}/markdown Request (200 - Success) ---")
-        return jsonify({
-            'html_content': html_content, # Frontend will use this for display
-            'markdown': document.markdown_content, # Keeping raw markdown for download button
-            'processed_date': document.processed_date.isoformat() if document.processed_date else None
-        })
-
+        return jsonify({'markdown_content': markdown_content})
     except Exception as e:
-        logger.exception(f"Error getting markdown for document {document_id}.")
-        logger.info(f"--- END: GET /api/documents/{document_id}/markdown Request (500 - Server Error) ---")
-        return jsonify({'error': 'Failed to get markdown'}), 500
+        logger.error(f"Error reading markdown file for document ID {document_id}: {e}", exc_info=True)
+        return jsonify({'error': 'Error reading markdown content'}), 500
 
 
-# Initial database setup (run once)
-@app.cli.command('init-db')
-def init_db_command():
-    """Initializes or updates the database."""
-    with app.app_context():
-        db.create_all()
-        # You can add initial data here if needed
-        logger.info('Initialized the database.')
+@app.route('/api/documents', methods=['GET'])
+def get_documents():
+    logger.info("--- START: GET /api/documents Request ---")
+    session = Session()
+    query = session.query(Document)
+
+    # Filtering parameters
+    q = request.args.get('q', '').strip()
+    tag_filter = request.args.get('tag', '').strip()
+    date_from_str = request.args.get('date_from', '').strip()
+    date_to_str = request.args.get('date_to', '').strip()
+
+    if q:
+        query = query.filter(Document.title.ilike(f'%{q}%') | Document.filename.ilike(f'%{q}%'))
+    
+    if tag_filter:
+        query = query.join(Document.tags).filter(Tag.name == tag_filter)
+
+    try:
+        if date_from_str:
+            date_from = datetime.fromisoformat(date_from_str)
+            query = query.filter(Document.upload_date >= date_from)
+        if date_to_str:
+            date_to = datetime.fromisoformat(date_to_str) + timedelta(days=1) # Include the whole day
+            query = query.filter(Document.upload_date < date_to)
+    except ValueError:
+        logger.warning("Invalid date format provided.")
+        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD.'}), 400
+
+    # Pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+
+    total_documents = query.count()
+    documents = query.order_by(Document.upload_date.desc()).paginate(page=page, per_page=per_page, error_out=False)
+
+    session.close()
+
+    response_data = {
+        'documents': [doc.to_dict() for doc in documents.items],
+        'total': total_documents,
+        'page': documents.page,
+        'per_page': documents.per_page,
+        'pages': documents.pages
+    }
+    logger.info("--- END: GET /api/documents Request (200 - Success) ---")
+    return jsonify(response_data)
+
+# --- Document Download Routes ---
+@app.route('/api/documents/<int:document_id>/download', methods=['GET'])
+def download_pdf(document_id):
+    session = Session()
+    document = session.query(Document).get(document_id) # Using query.get for now
+    session.close()
+
+    if not document or not document.filepath or not os.path.exists(document.filepath):
+        logger.warning(f"Download request for non-existent or missing PDF for ID: {document_id}")
+        return jsonify({'error': 'PDF document not found'}), 404
+    
+    # Use send_from_directory to securely serve the file
+    return send_from_directory(app.config['UPLOAD_FOLDER'], document.filename, as_attachment=True)
 
 if __name__ == '__main__':
-    # It's recommended to run migrations using 'flask db upgrade'
-    # instead of create_all() directly in main for production setups.
-    # For initial dev, create_all() is fine.
+    # Ensure database tables are created on startup (for development)
     with app.app_context():
-        db.create_all()
-    app.run(debug=True, host='0.0.0.0', port=5050)
+        Base.metadata.create_all(engine)
+    app.run(host='0.0.0.0', port=5050, debug=True)
