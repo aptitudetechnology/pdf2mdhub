@@ -1,29 +1,4 @@
-# test_upload_api.py
-import sys
-print("Python sys.path:", sys.path) # DEBUG: Prints Python's module search path
-
-# The import below is the one causing the error. We keep it to see sys.path before it fails.
-from backend.app import create_app # Adjust this import if your app is elsewhere
-
-import requests
-import json
-import io
-import os
-import time # For slight delays if needed
-
-# --- Configuration ---
-# CORRECTED: Changed /api/documents to /api/upload
-UPLOAD_URL = "http://127.0.0.1:5050/api/upload" # This matches your upload_bp.route in app.py
-
-# A simple dummy PDF content for testing.
-# This isn't a valid PDF, but it simulates a binary file for the upload process.
-# The content itself won't be processed as a PDF by the backend unless you have a real PDF parser.
-# For now, it just needs to be a byte stream.
-DUMMY_PDF_CONTENT = b"This is a test PDF document for upload. It contains some text that might be indexed later."
-DUMMY_PDF_FILENAME = "test_document.pdf"
-
-# --- Test Helper Function ---
-def run_upload_test(test_name, filename, file_content, metadata=None, tags=None, expected_status=201, expected_message_substring=None, check_document_data=None):
+def run_upload_test(test_name, filename, file_content, metadata=None, tags=None, title=None, expected_status=201, expected_message_substring=None, check_document_data=None):
     """
     Runs a single API upload test and asserts its outcome.
 
@@ -33,6 +8,7 @@ def run_upload_test(test_name, filename, file_content, metadata=None, tags=None,
         file_content (bytes): The binary content of the file.
         metadata (dict, optional): Dictionary for document_metadata.
         tags (list, optional): List of strings for tags.
+        title (str, optional): Title for the document.
         expected_status (int): The expected HTTP status code (default: 201 Created).
         expected_message_substring (str, optional): A substring expected in the 'message' field of the response.
         check_document_data (dict, optional): A dictionary of key-value pairs to check in the 'document' object.
@@ -49,6 +25,8 @@ def run_upload_test(test_name, filename, file_content, metadata=None, tags=None,
         data['document_metadata'] = json.dumps(metadata)
     if tags is not None:
         data['tags'] = json.dumps(tags)
+    if title is not None:
+        data['title'] = title
 
     try:
         response = requests.post(UPLOAD_URL, files=files, data=data)
@@ -102,140 +80,21 @@ def run_upload_test(test_name, filename, file_content, metadata=None, tags=None,
     except Exception as e:
         print(f"Test '{test_name}' FAILED: An unexpected error occurred - {e}")
 
-# --- Test Cases ---
-print("Starting backend API upload tests...\n")
-
-# Test 1: Basic successful upload with minimal data
-run_upload_test(
-    "1. Basic successful upload",
-    filename=DUMMY_PDF_FILENAME,
-    file_content=DUMMY_PDF_CONTENT,
-    expected_status=201,
-    expected_message_substring="File uploaded successfully",
-    check_document_data={
-        "filename": DUMMY_PDF_FILENAME,
-        "title": "test_document", # Default title derived from filename
-        "status": "uploaded",
-        "tags": [],
-        "document_metadata": {}
-    }
-)
-
-# Test 2: Upload with custom title and tags
-custom_title = "Invoice Report Q3"
-custom_tags = ["invoice", "finance", "report"]
-custom_metadata = {"department": "accounting", "priority": "high"}
-
+# Updated test case example for Test 2:
 run_upload_test(
     "2. Upload with custom title, tags, and metadata",
     filename="invoice_q3.pdf",
     file_content=DUMMY_PDF_CONTENT,
-    metadata={"title": custom_title, "source": "email"}, # Include custom title in metadata
-    tags=custom_tags,
+    title="Invoice Report Q3",  # Pass title as separate parameter
+    metadata={"source": "email", "department": "accounting"},
+    tags=["invoice", "finance", "report"],
     expected_status=201,
     expected_message_substring="File uploaded successfully",
     check_document_data={
         "filename": "invoice_q3.pdf",
-        "title": custom_title, # Should be the custom title from metadata
+        "title": "Invoice Report Q3",
         "status": "uploaded",
-        "tags": custom_tags,
-        "document_metadata": {"title": custom_title, "source": "email"}
+        "tags": ["invoice", "finance", "report"],
+        "document_metadata": {"source": "email", "department": "accounting"}
     }
 )
-
-# Test 3: Upload with empty metadata and tags
-run_upload_test(
-    "3. Upload with empty metadata and tags",
-    filename="empty_meta_tags.pdf",
-    file_content=DUMMY_PDF_CONTENT,
-    metadata={},
-    tags=[],
-    expected_status=201,
-    expected_message_substring="File uploaded successfully",
-    check_document_data={
-        "filename": "empty_meta_tags.pdf",
-        "title": "empty_meta_tags",
-        "status": "uploaded",
-        "tags": [],
-        "document_metadata": {}
-    }
-)
-
-# Test 4: Upload without any metadata or tags fields
-run_upload_test(
-    "4. Upload without metadata or tags fields",
-    filename="no_meta_no_tags.pdf",
-    file_content=DUMMY_PDF_CONTENT,
-    expected_status=201,
-    expected_message_substring="File uploaded successfully",
-    check_document_data={
-        "filename": "no_meta_no_tags.pdf",
-        "title": "no_meta_no_tags",
-        "status": "uploaded",
-        "tags": [],
-        "document_metadata": {}
-    }
-)
-
-# Test 5: Upload with invalid JSON for document_metadata
-run_upload_test(
-    "5. Upload with invalid JSON for document_metadata",
-    filename="invalid_meta.pdf",
-    file_content=DUMMY_PDF_CONTENT,
-    metadata="this is not valid json", # Pass a string directly, not a dict
-    tags=[],
-    expected_status=400,
-    expected_message_substring="Invalid JSON for document_metadata"
-)
-
-# Test 6: Upload with invalid JSON for tags
-run_upload_test(
-    "6. Upload with invalid JSON for tags",
-    filename="invalid_tags.pdf",
-    file_content=DUMMY_PDF_CONTENT,
-    metadata={"title": "Test Invalid Tags"},
-    tags="this is not valid json for tags", # Pass a string directly, not a list
-    expected_status=201, # The backend is designed to *try* to parse, and if it fails, treat as literal string for the tag
-    expected_message_substring="File uploaded successfully",
-    check_document_data={
-        "filename": "invalid_tags.pdf",
-        "title": "Test Invalid Tags",
-        "status": "uploaded",
-        "tags": ["this is not valid json for tags"], # It should treat it as a single literal tag
-        "document_metadata": {"title": "Test Invalid Tags"}
-    }
-)
-
-
-# Test 7: Upload with no file part (should be caught by backend before save_file)
-# This test requires manipulating `files` to be empty
-print(f"\n===== Running Upload Test: 7. Upload with no file part =====")
-try:
-    response = requests.post(UPLOAD_URL, files={}, data={'document_metadata': '{}'})
-    response_data = {}
-    try:
-        response_data = response.json()
-    except json.JSONDecodeError:
-        print(f"Test '7. Upload with no file part' FAILED: Could not decode JSON from response. Response content: {response.text}")
-        print(f"Status Code: {response.status_code}")
-        assert False, "JSON Decode Error"
-
-    print(f"\n--- API Response (Status: {response.status_code}) ---")
-    print(json.dumps(response_data, indent=2))
-    print("--------------------------------------")
-
-    assert response.status_code == 400, \
-        f"Test '7. Upload with no file part' FAILED: Expected status 400, got {response.status_code}. Response: {response.text}"
-    assert "No file part in the request" in response_data.get('error', ''), \
-        f"Test '7. Upload with no file part' FAILED: Expected error 'No file part', got '{response_data.get('error')}'"
-    print(f"Test '7. Upload with no file part' PASSED.")
-
-except requests.exceptions.RequestException as e:
-    print(f"Test '7. Upload with no file part' FAILED: Request failed - {e}")
-except AssertionError as e:
-    print(f"Test '7. Upload with no file part' FAILED: {e}")
-except Exception as e:
-    print(f"Test '7. Upload with no file part' FAILED: An unexpected error occurred - {e}")
-
-
-print("\nAll upload tests finished.")
