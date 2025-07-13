@@ -39,29 +39,25 @@ class Document(db.Model):
         Handles DetachedInstanceError gracefully.
         """
         try:
-            # Try to access tags normally
             tags = [tag.name for tag in self.tags]
         except DetachedInstanceError:
-            # If detached, try to get tags from current session
             try:
                 from flask import current_app
                 with current_app.app_context():
-                    # Re-merge the instance with current session
                     merged_doc = db.session.merge(self)
                     tags = [tag.name for tag in merged_doc.tags]
             except:
-                # If all else fails, return empty tags
                 tags = []
         except Exception:
-            # Handle any other exceptions
             tags = []
-        
         return {
             'id': self.id,
+            'title': self.title, # <-- Added
             'filename': self.filename,
+            'file_path': self.file_path, # <-- Added
             'upload_date': self.upload_date.isoformat() if self.upload_date else None,
             'status': self.status,
-            'metadata': self.document_metadata,
+            'metadata': self.document_metadata, # Renamed from 'document_metadata' in model
             'search_text': self.search_text,
             'tags': tags,
             # 'user_id': self.user_id, # Uncomment if user tracking
