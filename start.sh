@@ -49,7 +49,7 @@ mkdir -p instance
 # --- 5. Database Migration Step (if using Flask-Migrate) ---
 # Ensure your Flask app is properly configured for Flask-Migrate (app.py)
 echo "Applying database migrations (if configured)..."
-flask db upgrade # Use 'flask' command from venv
+#flask db upgrade # Use 'flask' command from venv
 
 # --- 6. Starting Flask server ---
 echo "Starting Flask server..."
