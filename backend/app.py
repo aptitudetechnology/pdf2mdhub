@@ -449,10 +449,16 @@ def viewer_page(document_id):
     return render_template('viewer.html', document_id=document_id)
 
 # Initialize database
-@app.before_first_request
-def create_tables():
-    db.create_all()
 
+
+# No longer need @app.before_first_request
+# The db.create_all() call within the `if __name__ == '__main__':` block
+# is sufficient for running once on startup.
+
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()  # This is the correct place to ensure tables are created on startup
+    app.run(debug=True, host='0.0.0.0', port=5000)
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
