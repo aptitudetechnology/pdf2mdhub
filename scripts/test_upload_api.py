@@ -109,7 +109,7 @@ def run_upload_test(test_name, filename, file_content, metadata=None, tags=None,
         print(f"Test '{test_name}' FAILED: An unexpected error occurred - {e}")
 
 # Make sure you have UPLOAD_URL defined somewhere in your script
-# UPLOAD_URL = "http://your-api-endpoint/upload"  # Replace with your actual URL.
+  UPLOAD_URL = "http://127.0.0.1:5050/upload"  # Replace with your actual URL
 
 # Your test case
 run_upload_test(
