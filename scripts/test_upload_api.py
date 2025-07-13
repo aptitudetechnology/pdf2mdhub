@@ -1,3 +1,31 @@
+import requests
+import io
+import json
+
+# Download the PDF file and store it as DUMMY_PDF_CONTENT
+def download_test_pdf():
+    """Download the test PDF file and return its content as bytes."""
+    pdf_url = "https://www.melbpc.org.au/wp-content/uploads/2017/10/small-example-pdf-file.pdf"
+    
+    try:
+        print(f"Downloading test PDF from: {pdf_url}")
+        response = requests.get(pdf_url)
+        response.raise_for_status()  # Raises an HTTPError for bad responses
+        
+        print(f"Successfully downloaded PDF ({len(response.content)} bytes)")
+        return response.content
+    
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to download PDF: {e}")
+        print("Using minimal fallback PDF content...")
+        
+        # Fallback minimal PDF content
+        return b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>\nendobj\nxref\n0 4\n0000000000 65535 f \n0000000010 00000 n \n0000000053 00000 n \n0000000125 00000 n \ntrailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n173\n%%EOF"
+
+# Download the PDF content
+DUMMY_PDF_CONTENT = download_test_pdf()
+
+# Your existing function and test code goes here...
 def run_upload_test(test_name, filename, file_content, metadata=None, tags=None, title=None, expected_status=201, expected_message_substring=None, check_document_data=None):
     """
     Runs a single API upload test and asserts its outcome.
@@ -80,12 +108,15 @@ def run_upload_test(test_name, filename, file_content, metadata=None, tags=None,
     except Exception as e:
         print(f"Test '{test_name}' FAILED: An unexpected error occurred - {e}")
 
-# Updated test case example for Test 2:
+# Make sure you have UPLOAD_URL defined somewhere in your script
+# UPLOAD_URL = "http://your-api-endpoint/upload"  # Replace with your actual URL
+
+# Your test case
 run_upload_test(
     "2. Upload with custom title, tags, and metadata",
     filename="invoice_q3.pdf",
     file_content=DUMMY_PDF_CONTENT,
-    title="Invoice Report Q3",  # Pass title as separate parameter
+    title="Invoice Report Q3",
     metadata={"source": "email", "department": "accounting"},
     tags=["invoice", "finance", "report"],
     expected_status=201,
