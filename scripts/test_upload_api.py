@@ -201,7 +201,7 @@ run_upload_test(
 
 
 # Test 7: Upload with no file part (should be caught by backend before save_file)
-# This test requires manipulating `files` to be empty
+# This test requires manipulating `files` to be empty.
 print(f"\n===== Running Upload Test: 7. Upload with no file part =====")
 try:
     response = requests.post(UPLOAD_URL, files={}, data={'document_metadata': '{}'})
