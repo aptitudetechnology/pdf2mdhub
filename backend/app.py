@@ -10,6 +10,7 @@ from pathlib import Path
 import json
 from werkzeug.utils import secure_filename
 from datetime import datetime
+from pypdf import PdfReader # ADD THIS IMPORT
 
 # Configure logging for the entire application
 logging.basicConfig(level=logging.INFO, # Start with INFO, change to DEBUG for more verbosity during development
@@ -161,6 +162,54 @@ def get_or_create_tag(tag_name):
         db.session.add(tag)
         logger.info(f"Created new tag: {tag_name}") # Log tag creation
     return tag
+
+
+# Utility functions
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ['pdf']
+
+def get_or_create_tag(tag_name):
+    """Get existing tag or create new one"""
+    tag = Tag.query.filter_by(name=tag_name).first()
+    if not tag:
+        tag = Tag(name=tag_name)
+        db.session.add(tag)
+        logger.info(f"Created new tag: {tag_name}") # Log tag creation
+    return tag
+
+def convert_pdf_to_markdown(pdf_path):
+    """
+    Converts text content from a PDF file into a basic Markdown string.
+    This is a simple text extraction; complex layouts might not translate well.
+    """
+    markdown_content = []
+    try:
+        reader = PdfReader(pdf_path)
+        for page in reader.pages:
+            text = page.extract_text()
+            if text:
+                # Basic attempt to format into Markdown-like structure
+                # This can be heavily customized based on desired output
+                lines = text.split('\n')
+                for line in lines:
+                    stripped_line = line.strip()
+                    if not stripped_line:
+                        continue
+
+                    # Simple heuristics for Markdown
+                    if len(stripped_line) < 50 and stripped_line.isupper():
+                        markdown_content.append(f"## {stripped_line}") # Potential heading
+                    elif stripped_line.endswith('.') or stripped_line.endswith('?'):
+                        markdown_content.append(stripped_line + "\n") # Paragraph end
+                    else:
+                        markdown_content.append(stripped_line + " ") # Continue line
+
+                markdown_content.append("\n\n---\n\n") # Separator between pages
+        return "".join(markdown_content).strip()
+    except Exception as e:
+        logger.error(f"Error converting PDF {pdf_path} to markdown: {e}")
+        return None # Return None if conversion fails
+
 
 # API Routes
 @app.route('/api/health')
