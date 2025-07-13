@@ -254,10 +254,6 @@ def upload_file():
                 convert_pdf_to_markdown(pdf_path, document_id)
             except Exception as e:
                 logger.error(f"Error initiating conversion task for document ID {document_id}: {e}", exc_info=True)
-                # The convert_pdf_to_markdown function should update status to 'conversion_failed'
-                # but we ensure that the main session object reflects it.
-                # It's crucial not to rollback if the document was already committed.
-                # Just refresh and potentially update.
                 session.refresh(new_document) # Refresh to get latest status if other session changed it
                 if new_document.status not in ['converted', 'conversion_failed']: # Only update if not already handled
                     new_document.status = 'conversion_failed'
@@ -341,21 +337,31 @@ def get_documents():
         logger.warning("Invalid date format provided.")
         return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD.'}), 400
 
-    # Pagination
+    # --- MODIFIED SECTION FOR MANUAL PAGINATION ---
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
 
+    # Calculate total number of documents matching filters first
     total_documents = query.count()
-    documents = query.order_by(Document.upload_date.desc()).paginate(page=page, per_page=per_page, error_out=False)
+
+    # Calculate offset and apply limit for the current page
+    offset = (page - 1) * per_page
+    
+    documents = query.order_by(Document.upload_date.desc()).offset(offset).limit(per_page).all()
+    # --- END MODIFIED SECTION ---
+
+    # Calculate total pages
+    pages = (total_documents + per_page - 1) // per_page if total_documents > 0 else 0
+
 
     session.close()
 
     response_data = {
-        'documents': [doc.to_dict() for doc in documents.items],
+        'documents': [doc.to_dict() for doc in documents], # documents is now a list, not a pagination object
         'total': total_documents,
-        'page': documents.page,
-        'per_page': documents.per_page,
-        'pages': documents.pages
+        'page': page, # Use the directly passed 'page' value
+        'per_page': per_page, # Use the directly passed 'per_page' value
+        'pages': pages # Use the manually calculated 'pages'
     }
     logger.info("--- END: GET /api/documents Request (200 - Success) ---")
     return jsonify(response_data)
