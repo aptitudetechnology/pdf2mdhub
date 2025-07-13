@@ -210,3 +210,29 @@ models/__init__.py → models/document.py (CIRCULAR!)
 4. Optimize route imports (performance and maintainability)
 
 Please analyze the codebase and provide a comprehensive report following this format.
+
+
+❌ Problem Files
+
+The following files are incorrectly importing Document and Tag directly from backend.models:
+
+backend/routes/documents.py
+backend/routes/upload.py
+backend/routes/upload.py.bak2
+backend/routes/search.py.raw
+
+✅ Fix: Update Imports to Avoid Circular Imports
+
+In each of these files, update:
+
+# ❌ Incorrect
+from backend.models import db, Document, Tag
+
+to:
+
+# ✅ Correct
+from backend.models import db
+from backend.models.document import Document
+from backend.models.tag import Tag
+
+This aligns with your current __init__.py strategy — only exporting db to prevent circular dependencies.

@@ -2,7 +2,9 @@
 from flask import Blueprint, request, jsonify, current_app
 import json
 import os
-from backend.models import db, Document, Tag
+from backend.models import db
+from backend.models.document import Document
+from backend.models.tag import Tag
 from backend.utils.storage import save_file
 from backend.utils.indexing import update_document_search_index # Will be called asynchronously later
 import threading # For basic async simulation

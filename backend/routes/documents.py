@@ -1,7 +1,9 @@
 # backend/routes/documents.py
 
 from flask import Blueprint, request, jsonify, send_from_directory, current_app
-from backend.models import db, Document, Tag
+from backend.models import db
+from backend.models.document import Document
+from backend.models.tag import Tag
 from backend.utils.storage import delete_file
 import os
 import json
