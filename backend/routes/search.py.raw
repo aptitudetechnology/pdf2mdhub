@@ -3,7 +3,6 @@ from flask import Blueprint, request, jsonify
 from backend.models import db
 from backend.models.document import Document
 from backend.models.tag import Tag
-from backend.database import db  # Add this import for database session
 import traceback
 
 search_bp = Blueprint('search', __name__)  # Fixed: was **name**
