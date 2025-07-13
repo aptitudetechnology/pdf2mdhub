@@ -1,6 +1,7 @@
 # backend/routes/search.py
 from flask import Blueprint, request, jsonify
 from backend.models.document import Document, Tag
+from sqlalchemy.orm import selectinload
 import traceback
 
 search_bp = Blueprint('search', __name__)
@@ -11,8 +12,8 @@ def search_documents():
         query = request.args.get('q', '').strip()
         tags_filter = request.args.getlist('tags')
         
-        # Start with all documents
-        search_results = Document.query
+        # Start with all documents and eager load tags to prevent DetachedInstanceError
+        search_results = Document.query.options(selectinload(Document.tags))
         
         # Apply text search filter
         if query:
@@ -32,13 +33,15 @@ def search_documents():
         # Pagination
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
-        
         pagination = search_results.order_by(Document.upload_date.desc()).paginate(
             page=page, per_page=per_page, error_out=False
         )
         
+        # Convert to dict while still in session context
+        documents_dict = [doc.to_dict() for doc in pagination.items]
+        
         return jsonify({
-            "documents": [doc.to_dict() for doc in pagination.items],
+            "documents": documents_dict,
             "total_results": pagination.total,
             "total_pages": pagination.pages,
             "current_page": pagination.page,
