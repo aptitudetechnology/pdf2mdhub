@@ -201,7 +201,7 @@ class UploadInterface {
                 formData.append('tags', tagsJsonString); // Append the JSON stringified tags
                 formData.append('title', commonTitle || file.name.split('.').slice(0, -1).join('.')); // Use file name if no common title
 
-                const response = await fetch('/api/documents', {
+                const response = await fetch('/api/upload', {
                     method: 'POST',
                     body: formData,
                 });
