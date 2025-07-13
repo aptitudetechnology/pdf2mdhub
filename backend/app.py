@@ -193,7 +193,7 @@ def register_routes(app):
         from backend.models.document import Document
         
         document = Document.query.get(document_id)
-        if not document or not document.filepath or not os.path.exists(document.file_path):
+        if not document or not document.file_path or not os.path.exists(document.file_path):
             return jsonify({'error': 'PDF document not found'}), 404
         
         return send_from_directory(app.config['UPLOAD_FOLDER'], document.filename, as_attachment=True)
