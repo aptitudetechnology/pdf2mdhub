@@ -72,4 +72,27 @@ def upload_document():
 
         new_document = Document(
             title=document_title,
-            filename=file
+            filename=file.filename,
+            file_path=filepath, # THIS MUST BE 'file_path'
+            document_metadata=metadata_dict,
+            status='uploaded'
+        )
+        new_document.tags.extend(tags)
+        db.session.add(new_document)
+        db.session.commit()
+
+        # 5. Trigger asynchronous text extraction and indexing
+        threading.Thread(target=update_document_search_index,
+                        args=(new_document.id, current_app._get_current_object())).start()
+
+        return jsonify({
+            "message": "File uploaded successfully. Processing for search indexing in background.",
+            "document": new_document.to_dict()
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        if filepath and os.path.exists(filepath):
+            os.remove(filepath)
+        current_app.logger.error(f"Error during document upload: {e}", exc_info=True)
+        return jsonify({"error": f"Failed to upload document: {str(e)}"}), 500
