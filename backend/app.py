@@ -39,10 +39,8 @@ def create_app():
     from backend.models import db
     db.init_app(app)
 
-    # Import models and create tables within app context
+    # Create tables within app context
     with app.app_context():
-        from backend.models.document import Document
-        from backend.models.tag import Tag
         db.create_all()
 
     # Register blueprints
