@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import logging
 import subprocess
 import json
-import shutil # Added: Import shutil for directory operations
+import shutil # <--- ADDED: Import shutil for directory operations
 
 # --- Configuration ---
 # Define the absolute path to the directory where this script is located
@@ -104,30 +104,23 @@ def convert_pdf_to_markdown(pdf_path, document_id):
     # Construct paths for the conversion
     base_name = os.path.splitext(os.path.basename(pdf_path))[0] # e.g., 'e5899449c544ddc3a29b21cbbdbac31a_Invoice_'
 
-    # pdf2md creates a folder named after the project name in its current working directory (cwd).
-    # We set cwd to MARKDOWN_FOLDER, so the project folder will be inside MARKDOWN_FOLDER.
-    project_folder_name = base_name # The name of the folder created by pdf2md
-    project_folder_path = os.path.join(app.config['MARKDOWN_FOLDER'], project_folder_name)
-
-    # The actual Markdown file is typically named after the project name (base_name) + .md
-    # and is located *inside* the project folder.
+    # --- MODIFIED: pdf2md creates a folder named after the project name, and puts the .md inside it. ---
+    project_folder_path = os.path.join(app.config['MARKDOWN_FOLDER'], base_name)
     output_md_filename_in_project_folder = f"{base_name}.md"
     output_md_path = os.path.join(project_folder_path, output_md_filename_in_project_folder)
 
-
-    # --- Clean up previous project folder before conversion ---
-    # This is crucial as pdf2md will error if the project folder already exists.
+    # --- ADDED: Clean up previous project folder before conversion (optional but recommended) ---
+    # This prevents the "Specified project folder already exists" error during subsequent conversions of the same name
     if os.path.exists(project_folder_path):
         logger.info(f"Removing pre-existing project folder: {project_folder_path}")
-        shutil.rmtree(project_folder_path)
+        shutil.rmtree(project_folder_path) # Remove the directory and its contents
 
-    logger.info(f"Executing command: pdf2md {pdf_path} {base_name} (cwd: {app.config['MARKDOWN_FOLDER']})")
+    logger.info(f"Executing PDF to Markdown conversion command: pdf2md {pdf_path} {base_name}")
     command = ['pdf2md', pdf_path, base_name]
 
     try:
-        # --- CRITICAL FIX: Set 'cwd' to MARKDOWN_FOLDER so pdf2md creates its project folder there ---
-        result = subprocess.run(command, capture_output=True, text=True, check=True,
-                                cwd=app.config['MARKDOWN_FOLDER']) # <--- KEY CHANGE HERE
+        # Run the pdf2md command
+        result = subprocess.run(command, capture_output=True, text=True, check=True)
         
         logger.info(f"pdf2md stdout: {result.stdout.strip()}")
         if result.stderr:
@@ -149,16 +142,12 @@ def convert_pdf_to_markdown(pdf_path, document_id):
         return markdown_content
 
     except FileNotFoundError as e:
-        # This specific catch block is for when the executable 'pdf2md' itself isn't found,
-        # or if after running, the output MD file is still missing despite check=True not failing.
-        # The 'pdf2md command not found or output file missing.' message
-        # is now more specific about the FileNotFoundError from the 'if not os.path.exists' check.
-        logger.error(f"Markdown file not found at expected path after conversion or pdf2md failed internally: {output_md_path}. Error: {e}")
+        logger.error(f"pdf2md command not found or markdown file not created for {pdf_path}: {e}")
         document.status = 'conversion_failed'
         session.commit()
-        raise Exception("Markdown file not found after conversion, or pdf2md command error.")
+        raise Exception("pdf2md command not found or output file missing.")
     except subprocess.CalledProcessError as e:
-        logger.error(f"Error converting PDF {pdf_path} using pdf2md. Command exited with error code {e.returncode}. Command: {' '.join(e.cmd)}")
+        logger.error(f"Error converting PDF {pdf_path} using pdf2md. Command: {' '.join(e.cmd)}")
         logger.error(f"pdf2md stdout: {e.stdout.strip()}")
         logger.error(f"pdf2md stderr: {e.stderr.strip()}")
         document.status = 'conversion_failed'
