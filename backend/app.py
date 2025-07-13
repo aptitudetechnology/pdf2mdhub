@@ -261,11 +261,49 @@ def upload_file():
 
 @app.route('/api/documents', methods=['GET'])
 def get_documents():
-    """Get a list of all documents."""
+    """Get a list of all documents, with optional search and filter."""
     logger.info("--- START: GET /api/documents Request ---")
-    documents = Document.query.order_by(Document.upload_date.desc()).all()
+
+    query = request.args.get('q', '') # 'q' for general query
+    tag_filter = request.args.get('tag', '') # 'tag' for tag filter
+    date_from_str = request.args.get('date_from')
+    date_to_str = request.args.get('date_to')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+
+    documents_query = Document.query
+
+    if query:
+        documents_query = documents_query.filter(
+            (Document.original_name.ilike(f'%{query}%')) |
+            (Document.markdown_content.ilike(f'%{query}%')) |
+            (Document.notes.ilike(f'%{query}%'))
+        )
+
+    if tag_filter:
+        documents_query = documents_query.join(Document.tags).filter(Tag.name.ilike(f'%{tag_filter}%'))
+
+    if date_from_str:
+        try:
+            date_from = datetime.strptime(date_from_str, '%Y-%m-%d')
+            documents_query = documents_query.filter(Document.upload_date >= date_from)
+        except ValueError:
+            logger.warning(f"Invalid date_from format: {date_from_str}")
+            # Optionally return an error or ignore
+
+    if date_to_str:
+        try:
+            date_to = datetime.strptime(date_to_str, '%Y-%m-%d')
+            # Add one day to include documents uploaded on date_to
+            documents_query = documents_query.filter(Document.upload_date < date_to + timedelta(days=1))
+        except ValueError:
+            logger.warning(f"Invalid date_to format: {date_to_str}")
+            # Optionally return an error or ignore
+
+    documents = documents_query.order_by(Document.upload_date.desc()).paginate(page=page, per_page=per_page, error_out=False)
+
     documents_data = []
-    for doc in documents:
+    for doc in documents.items: # Iterate over items for paginated results
         documents_data.append({
             'id': doc.id,
             'original_name': doc.original_name,
@@ -275,8 +313,19 @@ def get_documents():
             'notes': doc.notes,
             'tags': [tag.name for tag in doc.tags]
         })
+
+    response_data = {
+        'documents': documents_data,
+        'total_documents': documents.total,
+        'total_pages': documents.pages,
+        'current_page': documents.page,
+        'per_page': documents.per_page,
+        'has_next': documents.has_next,
+        'has_prev': documents.has_prev
+    }
+
     logger.info("--- END: GET /api/documents Request (200 - Success) ---")
-    return jsonify(documents_data)
+    return jsonify(response_data)
 
 @app.route('/api/documents/<int:document_id>', methods=['GET'])
 def get_document_details(document_id):
