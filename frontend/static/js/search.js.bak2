@@ -16,8 +16,8 @@ class SearchInterface {
 
         this.currentPage = 1;
         this.totalPages = 1;
-        // Adjusted to 20 to align with backend's typical default per_page for /api/search
-        this.resultsPerPage = 20; 
+        // The backend's 'per_page' is 20 by default, let's use that as frontend default too
+        this.resultsPerPage = 20;
 
         this.setupSearch();
         this.loadSearchResults(); // Initial load when page loads
@@ -70,7 +70,7 @@ class SearchInterface {
 
     async loadSearchResults() {
         const query = this.searchInput.value.trim();
-        // Ensure tags are comma-separated for the backend as your /api/search expects
+        // Ensure tags are comma-separated for the backend
         const tags = this.tagFilter.value.split(',').map(tag => tag.trim()).filter(tag => tag !== '').join(',');
         const dateFrom = this.dateFromInput.value;
         const dateTo = this.dateToInput.value;
@@ -91,13 +91,12 @@ class SearchInterface {
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
-            const data = await response.json();
+            const data = await response.json(); // Data now structured with 'results' and 'pagination'
 
-            // --- IMPORTANT: This part is adjusted to match your backend's JSON structure ---
-            // Your backend's /api/search endpoint returns data like:
-            // { documents: [...], total_pages: X, current_page: Y }
-            this.renderResults(data.documents);
-            this.updatePagination(data.current_page, data.total_pages);
+            // --- IMPORTANT CHANGE HERE ---
+            this.renderResults(data.results); // Use data.results instead of data.documents
+            // Access pagination details from the 'pagination' object
+            this.updatePagination(data.pagination.page, data.pagination.pages);
 
         } catch (error) {
             console.error('Error fetching search results:', error);
@@ -122,10 +121,7 @@ class SearchInterface {
                         <div class="card-tags">
                             ${doc.tags && doc.tags.length > 0 ? doc.tags.map(tag => `<span class="tag">${tag.trim()}</span>`).join('') : '<span class="tag no-tag">No Tags</span>'}
                         </div>
-                        <div class="card-actions">
-                            <a href="/documents/${doc.id}" class="card-link view-markdown-link">View Markdown</a>
-                            <a href="/api/documents/${doc.id}/download" class="card-link view-pdf-link" target="_blank">View PDF</a>
-                        </div>
+                        <a href="/api/documents/${doc.id}/download" class="card-link" target="_blank">View Document</a>
                     </div>
                 `;
                 this.resultsContainer.appendChild(card);
