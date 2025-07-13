@@ -30,20 +30,9 @@ async performConversion(file, options, jobId) {
 
 ## 2. templates/base.html
 ```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF2MD Hub</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/@opengovsg/pdf2md@latest/dist/pdf2md.min.js"></script>
-    <script src="{{ url_for('static', filename='js/pdf2md.js') }}"></script>
-</head>
-<body>
-    {% block content %}{% endblock %}
-</body>
-</html>
+<!-- Add OpenGovSG PDF2MD library CDN and local JS -->
+<script src="https://cdn.jsdelivr.net/npm/@opengovsg/pdf2md@latest/dist/pdf2md.min.js"></script>
+<script src="{{ url_for('static', filename='js/pdf2md.js') }}"></script>
 ```
 
 ## 3. static/js/upload.js
@@ -53,19 +42,16 @@ class UploadInterface {
         this.dropZone = document.getElementById('drop-zone');
         this.fileInput = document.getElementById('file-input');
         this.progressContainer = document.getElementById('progress-container');
-        this.progressBar = document.getElementById('upload-progress');
         this.setupEventListeners();
     }
-
     setupEventListeners() {
         // Drag and drop handlers
         // File input change handler
         // Progress tracking
     }
-
     handleFileUpload(files) {
         // Process files using PDF2MD.processAndUpload
-        // Update UI with progress using this.progressBar.value = percent;
+        // Update UI with progress
     }
 }
 ```
@@ -73,18 +59,16 @@ class UploadInterface {
 ## 4. static/js/document-viewer.js
 ```javascript
 class DocumentViewer {
-    constructor() {
-        const container = document.getElementById('viewer-container');
-        this.documentId = container.dataset.documentId;
+    constructor(documentId) {
+        this.documentId = documentId;
         this.pdfViewer = document.getElementById('pdf-viewer');
         this.markdownViewer = document.getElementById('markdown-viewer');
         this.loadDocument();
     }
-
     async loadDocument() {
         // Load document data
         // Display PDF in iframe
-        // Render markdown with syntax highlighting or using markdown-it
+        // Render markdown with syntax highlighting
     }
 }
 ```
@@ -98,10 +82,9 @@ class SearchInterface {
         this.filtersContainer = document.getElementById('search-filters');
         this.setupSearch();
     }
-
     setupSearch() {
         // Debounced search input
-        // Tag filter dropdown handler
+        // Filter handling
         // Results pagination
     }
 }
@@ -115,9 +98,7 @@ class SearchInterface {
     <h2>Upload PDF Documents</h2>
     <div id="drop-zone">Drag & drop files here or click to select</div>
     <input type="file" id="file-input" multiple accept="application/pdf">
-    <div id="progress-container">
-        <progress id="upload-progress" value="0" max="100"></progress>
-    </div>
+    <div id="progress-container"></div>
     <form id="metadata-form">
         <input type="text" name="tags" placeholder="Tags (comma separated)">
         <input type="text" name="title" placeholder="Document Title">
@@ -133,7 +114,7 @@ class SearchInterface {
 ```html
 {% extends "base.html" %}
 {% block content %}
-<div id="viewer-container" data-document-id="{{ document.id }}">
+<div id="viewer-container">
     <div id="toolbar">
         <button id="download-btn">Download</button>
         <button id="edit-btn">Edit</button>
@@ -143,7 +124,14 @@ class SearchInterface {
         <iframe id="pdf-viewer" src="{{ pdf_url }}"></iframe>
         <div id="markdown-viewer">{{ markdown_content|safe }}</div>
     </div>
-    {% include "components/metadata_block.html" %}
+    <aside id="metadata-sidebar">
+        <h3>Metadata</h3>
+        <ul>
+            <li>Title: {{ document.title }}</li>
+            <li>Tags: {{ document.tags }}</li>
+            <!-- Add more metadata fields as needed -->
+        </ul>
+    </aside>
     <section id="comments-section">
         <h3>Comments/Notes</h3>
         <!-- Comments UI here -->
@@ -160,15 +148,18 @@ class SearchInterface {
 <div id="search-container">
     <input type="text" id="search-input" placeholder="Search documents...">
     <aside id="search-filters">
-        <select id="tag-filter">
-            {% for tag in available_tags %}
-            <option value="{{ tag }}">{{ tag }}</option>
-            {% endfor %}
-        </select>
+        <!-- Advanced filter options here -->
     </aside>
     <div id="search-results">
         {% for doc in results %}
-            {% include "components/document_card.html" %}
+        <div class="result-card">
+            <img src="{{ doc.thumbnail_url }}" alt="Thumbnail">
+            <div class="result-info">
+                <h4>{{ doc.title }}</h4>
+                <p>{{ doc.summary }}</p>
+                <span>{{ doc.tags }}</span>
+            </div>
+        </div>
         {% endfor %}
     </div>
     <div id="pagination-controls">
@@ -179,73 +170,31 @@ class SearchInterface {
 {% endblock %}
 ```
 
-## 9. templates/components/document_card.html
-```html
-<div class="result-card">
-    <img src="{{ doc.thumbnail_url }}" alt="Thumbnail">
-    <div class="result-info">
-        <h4>{{ doc.title }}</h4>
-        <p>{{ doc.summary }}</p>
-        <span>{{ doc.tags }}</span>
-    </div>
-</div>
-```
-
-## 10. templates/components/metadata_block.html
-```html
-<aside id="metadata-sidebar">
-    <h3>Metadata</h3>
-    <ul>
-        <li>Title: {{ document.title }}</li>
-        <li>Tags: {{ document.tags }}</li>
-        <!-- Add more metadata fields as needed -->
-    </ul>
-</aside>
-```
-
-## 11. static/css/styles.css
+## 9. static/css/styles.css
 - Responsive design
 - Modern card-based layout
 - Drag-and-drop visual feedback
-- Progress animations using `<progress>`
-- Light/dark theme toggle using media queries or JS
-- Consistent layout for viewer, uploader, and search
+- Progress animations
+- Dark/light theme support
 
-## 12. backend/app.py
-- Add endpoints:
-  - `/upload` (handle file + metadata)
-  - `/convert` (trigger PDF2MD conversion)
-  - `/document/<id>` (viewing)
-  - `/search` (query by text + tags)
-- Flask Blueprints for modularity
-- Use environment variables via `.env`
+## 10. backend/app.py
+- Ensure all required API endpoints exist and are functional.
+- Update database schema for document status, tags, indexing, user tracking if needed.
 
-## 13. tests/
-- Unit tests for:
-  - File validation
-  - Metadata submission
-  - PDF to Markdown conversion
-  - Search result matching
-- Integration tests:
-  - Upload flow (file → convert → view)
-  - Viewer rendering
-  - Pagination and filters
-- Mock S3/filesystem if needed
+## 11. tests/
+- Add unit and integration tests for conversion, API, search, upload, error handling, performance.
 
 ---
 
 # File Implementation Order
-
-1. `static/js/upload.js`
-2. `static/js/document-viewer.js`
-3. `static/js/search.js`
-4. `static/js/pdf2md.js`
-5. `templates/components/document_card.html`
-6. `templates/components/metadata_block.html`
-7. `templates/upload.html`
-8. `templates/viewer.html`
-9. `templates/search.html`
-10. `templates/base.html`
-11. `static/css/styles.css`
-12. `backend/app.py`
-13. `tests/`
+1. static/js/upload.js
+2. static/js/document-viewer.js
+3. static/js/search.js
+4. static/js/pdf2md.js
+5. templates/upload.html
+6. templates/viewer.html
+7. templates/search.html
+8. templates/base.html
+9. static/css/styles.css
+10. backend/app.py
+11. tests/
