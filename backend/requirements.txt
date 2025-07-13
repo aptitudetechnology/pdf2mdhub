@@ -3,3 +3,4 @@ Flask-Cors
 python-dotenv
 requests
 Werkzeug
+flask_sqlalchemy
