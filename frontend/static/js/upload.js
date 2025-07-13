@@ -151,7 +151,7 @@ class UploadInterface {
         this.uploadButton.disabled = true; // Disable button to prevent re-submission
 
         const commonTagsRaw = this.formTagsInput.value.trim();
-        const commonTitle = this.formTitleInput.value.trim();
+        //const commonTitle = this.formTitleInput.value.trim();
 
         // --- FIX: Process Tags for JSON before sending ---
         let tagsArray = [];
