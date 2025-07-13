@@ -111,7 +111,7 @@ def upload_document():
         db.session.add(new_document)
         db.session.commit()
 
-        # 5. Trigger asynchronous text extraction and indexing
+        # 5. Trigger asynchronous text extraction and indexing.
         threading.Thread(target=update_document_search_index,
                         args=(new_document.id, current_app._get_current_object())).start()
 
