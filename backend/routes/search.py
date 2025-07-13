@@ -1,0 +1,52 @@
+# backend/routes/search.py
+
+from flask import Blueprint, request, jsonify
+from backend.models import Document, Tag
+
+search_bp = Blueprint('search', __name__)
+
+@search_bp.route('/api/search', methods=['GET'])
+def search_documents():
+    query = request.args.get('q', '').strip()
+    tags_filter = request.args.getlist('tags') # Allows multiple 'tags' query params
+
+    # Start with all documents or an empty set
+    search_results = Document.query
+
+    # Apply text search filter
+    if query:
+        # Use ilike for case-insensitive partial matching
+        search_results = search_results.filter(
+            (Document.filename.ilike(f'%{query}%')) |
+            (Document.metadata.ilike(f'%{query}%')) | # Search in stringified JSON metadata
+            (Document.search_text.ilike(f'%{query}%'))
+        )
+        # Note: Searching JSON column directly with ILIKE might not be efficient/correct for all DBs.
+        # For complex JSON querying, consider specific JSON functions (PostgreSQL's ->>, @>)
+
+    # Apply tag filter (AND logic: document must have all specified tags)
+    if tags_filter:
+        for tag_name in tags_filter:
+            search_results = search_results.filter(
+                Document.tags.any(Tag.name.ilike(f'%{tag_name.strip()}%'))
+            )
+        # For OR logic (document has ANY of the tags):
+        # search_results = search_results.filter(Document.tags.any(Tag.name.in_(tags_filter)))
+
+
+    # Pagination (optional for search, but good practice)
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+
+    pagination = search_results.order_by(Document.upload_date.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    documents = pagination.items
+
+    return jsonify({
+        "documents": [doc.to_dict() for doc in documents],
+        "total_results": pagination.total,
+        "total_pages": pagination.pages,
+        "current_page": pagination.page,
+        "per_page": pagination.per_page
+    })
