@@ -34,10 +34,11 @@ def run_test(test_name, url, expected_status=200, check_results_count=None, chec
         assert response.status_code == expected_status, \
             f"Test '{test_name}' FAILED: Expected status {expected_status}, got {response.status_code}"
 
-        # **FIX APPLIED HERE:** Assert that 'results' key exists, not 'documents'
+        # **FIXED:** Assert that 'results' key exists
         assert 'results' in response_data, \
             f"Test '{test_name}' FAILED: Assertion Error - Response missing 'results' key"
 
+        # **FIXED:** Get results from the 'results' key
         results = response_data.get('results', [])
         pagination = response_data.get('pagination', {})
         query = response_data.get('query', '') # Get the query from the response
@@ -73,7 +74,8 @@ def run_test(test_name, url, expected_status=200, check_results_count=None, chec
                 if not tag_found_in_any_doc:
                     found_all_expected_tags = False
                     assert False, f"Test '{test_name}' FAILED: No document found with tag '{expected_tag}'"
-            assert found_all_expected_tags, f"Test '{test_name}' PASSED for tags check."
+            if found_all_expected_tags: # Only print PASS if all tags were found
+                 print(f"Test '{test_name}' PASSED for tags check.")
         elif check_tags and (check_results_count is None or check_results_count == 0):
             # If tags are checked but no results are expected, ensure no results are returned.
             assert len(results) == 0, f"Test '{test_name}' FAILED: Expected no results, but received some while checking for tags."
@@ -236,30 +238,4 @@ run_test(
 # With only 1 document, page 2 should be empty, but pagination info might still reflect total.
 run_test(
     "5a. Pagination - Page 2, 5 per_page",
-    f"{BASE_URL}?page=2&per_page=5",
-    check_results_count=0,
-    check_pagination={"total": 1, "page": 2, "pages": 1, "per_page": 5, "has_next": False, "has_prev": True},
-    check_query=""
-)
-
-# 5b. Pagination - Requesting a page beyond total_pages
-run_test(
-    "5b. Pagination - Requesting a page beyond total_pages",
-    f"{BASE_URL}?page=999&per_page=10",
-    check_results_count=0,
-    check_pagination={"total": 1, "page": 999, "pages": 1, "per_page": 10, "has_next": False, "has_prev": True},
-    check_query=""
-)
-
-# 6. Combined search (query, tags, dates, pagination)
-# Expect 0 results given the specific parameters that likely don't match the single uploaded document.
-# (e.g., query 'report' and tag 'project' are not in the existing document)
-run_test(
-    "6. Combined search (query, tags, dates, pagination)",
-    f"{BASE_URL}?q=report&tags=finance%2Cproject&date_from={last_month.strftime('%Y-%m-%d')}&page=1&per_page=2",
-    check_results_count=0,
-    check_pagination={"total": 0, "page": 1, "pages": 0, "per_page": 2, "has_next": False, "has_prev": False},
-    check_query="report"
-)
-
-print("\nAll tests finished.")
+    f"{BASE_URL}?
