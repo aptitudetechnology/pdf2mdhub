@@ -1,8 +1,11 @@
 Flask
 Flask-Cors
+Flask-SQLAlchemy
 python-dotenv
 requests
 Werkzeug
 flask_sqlalchemy
 Flask-Moment
 pypdf
+markdown
+python-magic
