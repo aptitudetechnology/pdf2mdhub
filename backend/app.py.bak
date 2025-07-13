@@ -160,19 +160,21 @@ def upload_document():
     logger.info(f"Files Data: {request.files}")
 
     try:
-        # CHANGE THIS LINE from 'file' to 'pdf_file'
-        if 'pdf_file' not in request.files:
-            logger.error("Error: No 'pdf_file' part in request.files.")
+        if 'file' not in request.files:
+            logger.error("Error: No 'file' part in request.files.")
             logger.info("--- END: POST /api/documents Request (400 - No file part) ---")
             return jsonify({'error': 'No file provided'}), 400
 
-        # CHANGE THIS LINE from 'file' to 'pdf_file'
-        file = request.files['pdf_file']
+        file = request.files['file']
         if file.filename == '':
             logger.error("Error: No file selected, filename is empty.")
             logger.info("--- END: POST /api/documents Request (400 - No file selected) ---")
             return jsonify({'error': 'No file selected'}), 400
-        
+
+        if not allowed_file(file.filename):
+            logger.error(f"Error: File type not allowed for {file.filename}.")
+            logger.info("--- END: POST /api/documents Request (400 - File type not allowed) ---")
+            return jsonify({'error': 'File type not allowed'}), 400
 
         logger.info(f"File received: {file.filename}, Content-Type: {file.content_type}")
 
