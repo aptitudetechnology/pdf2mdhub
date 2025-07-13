@@ -108,7 +108,7 @@ def register_routes(app):
                 new_document = Document(
                     title=title,
                     filename=final_filename,
-                    filepath=pdf_path,
+                    #filepath=pdf_path,
                     file_path=pdf_path,
                     status='uploaded'
                 )
