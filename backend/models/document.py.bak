@@ -1,6 +1,6 @@
 # backend/models/document.py
 from datetime import datetime
-from backend.database import db  # Import from dedicated database module
+from . import db  # Import the db instance - fixes circular import
 from sqlalchemy.orm.exc import DetachedInstanceError
 import json
 
@@ -74,6 +74,7 @@ class Document(db.Model):
     
     def __repr__(self):
         return f"<Document {self.id}: {self.filename}>"
+
 
 class Tag(db.Model):
     __tablename__ = 'tags'

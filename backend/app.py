@@ -1,4 +1,4 @@
-# app.py - Flask-SQLAlchemy version
+# app.py - Refactored to eliminate circular imports
 import os
 from flask import Flask, request, jsonify, render_template, send_from_directory, url_for
 from werkzeug.utils import secure_filename
@@ -24,30 +24,177 @@ if not os.path.exists(MARKDOWN_FOLDER):
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Flask App Initialization
-app = Flask(__name__,
-            static_folder=os.path.join(BASE_DIR, '..', 'frontend', 'static'),
-            template_folder=os.path.join(BASE_DIR, '..', 'frontend', 'templates'))
+def create_app():
+    """Application factory pattern to avoid circular imports"""
+    app = Flask(__name__,
+                static_folder=os.path.join(BASE_DIR, '..', 'frontend', 'static'),
+                template_folder=os.path.join(BASE_DIR, '..', 'frontend', 'templates'))
 
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MARKDOWN_FOLDER'] = MARKDOWN_FOLDER
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///documents.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+    app.config['MARKDOWN_FOLDER'] = MARKDOWN_FOLDER
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///documents.db'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Initialize Flask-SQLAlchemy
-from backend.models import db
-db.init_app(app)
+    # Initialize Flask-SQLAlchemy - import only db instance
+    from backend.models import db
+    db.init_app(app)
 
-# Import models after db initialization
-from backend.models.document import Document, Tag
+    # Import models and create tables within app context
+    with app.app_context():
+        from backend.models.document import Document, Tag
+        db.create_all()
 
-# Create tables
-with app.app_context():
-    db.create_all()
+    # Register blueprints
+    from backend.routes.search import search_bp
+    app.register_blueprint(search_bp)
 
-# Register blueprints
-from backend.routes.search import search_bp
-app.register_blueprint(search_bp)
+    # Register routes with the app
+    register_routes(app)
+    
+    return app
+
+def register_routes(app):
+    """Register all routes with the Flask app"""
+    
+    @app.route('/')
+    def index():
+        return render_template('index.html')
+
+    @app.route('/upload')
+    def upload_page():
+        return render_template('upload.html')
+
+    @app.route('/search')
+    def search_page():
+        return render_template('search.html')
+
+    @app.route('/viewer/<int:document_id>')
+    def viewer_page(document_id):
+        # Import models at function level to avoid circular imports
+        from backend.models.document import Document
+        document = Document.query.get(document_id)
+        if document:
+            return render_template('viewer.html', document=document)
+        return "Document not found", 404
+
+    @app.route('/api/upload', methods=['POST'])
+    def upload_file():
+        # Import models at function level to avoid circular imports
+        from backend.models.document import Document, Tag
+        from backend.models import db
+        
+        logger.info("--- START: POST /api/upload Request ---")
+        
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+        
+        file = request.files['file']
+        tags_json = request.form.get('tags')
+        title = request.form.get('title')
+
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            unique_id = os.urandom(16).hex()
+            final_filename = f"{unique_id}_{filename}"
+            pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], final_filename)
+
+            try:
+                file.save(pdf_path)
+                logger.info(f"File saved to: {pdf_path}")
+
+                new_document = Document(
+                    title=title,
+                    filename=final_filename,
+                    filepath=pdf_path,
+                    status='uploaded'
+                )
+
+                if tags_json:
+                    try:
+                        tags_array = json.loads(tags_json)
+                        for tag_name in tags_array:
+                            tag = Tag.query.filter_by(name=tag_name).first()
+                            if not tag:
+                                tag = Tag(name=tag_name)
+                                db.session.add(tag)
+                            new_document.tags.append(tag)
+                    except json.JSONDecodeError:
+                        logger.warning(f"Invalid JSON for tags: {tags_json}")
+
+                db.session.add(new_document)
+                db.session.commit()
+
+                document_id = new_document.id
+                logger.info(f"File uploaded and processing initiated for ID: {document_id}")
+
+                try:
+                    convert_pdf_to_markdown(pdf_path, document_id)
+                except Exception as e:
+                    logger.error(f"Error during conversion: {e}")
+
+                # Refresh the document to get latest status
+                db.session.refresh(new_document)
+                
+                return jsonify({
+                    'message': 'File uploaded successfully, processing initiated',
+                    'document': new_document.to_dict()
+                }), 201
+
+            except Exception as e:
+                logger.error(f"Error during upload: {e}")
+                db.session.rollback()
+                return jsonify({'error': f'Server error during upload: {e}'}), 500
+
+        return jsonify({'error': 'File type not allowed'}), 400
+
+    @app.route('/api/documents', methods=['GET'])
+    def get_documents():
+        # Import models at function level to avoid circular imports
+        from backend.models.document import Document, Tag
+        
+        logger.info("--- START: GET /api/documents Request ---")
+        
+        query = Document.query
+        
+        # Apply filters
+        q = request.args.get('q', '').strip()
+        tag_filter = request.args.get('tag', '').strip()
+        
+        if q:
+            query = query.filter(Document.title.ilike(f'%{q}%') | Document.filename.ilike(f'%{q}%'))
+        
+        if tag_filter:
+            query = query.join(Document.tags).filter(Tag.name == tag_filter)
+        
+        # Pagination
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        
+        pagination = query.order_by(Document.upload_date.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        return jsonify({
+            'documents': [doc.to_dict() for doc in pagination.items],
+            'total': pagination.total,
+            'page': pagination.page,
+            'per_page': pagination.per_page,
+            'pages': pagination.pages
+        })
+
+    @app.route('/api/documents/<int:document_id>/download', methods=['GET'])
+    def download_pdf(document_id):
+        # Import models at function level to avoid circular imports
+        from backend.models.document import Document
+        
+        document = Document.query.get(document_id)
+        if not document or not document.filepath or not os.path.exists(document.filepath):
+            return jsonify({'error': 'PDF document not found'}), 404
+        
+        return send_from_directory(app.config['UPLOAD_FOLDER'], document.filename, as_attachment=True)
 
 # Helper function to check allowed extensions
 def allowed_file(filename):
@@ -55,6 +202,11 @@ def allowed_file(filename):
 
 # PDF to Markdown conversion function
 def convert_pdf_to_markdown(pdf_path, document_id):
+    # Import models at function level to avoid circular imports
+    from backend.models.document import Document
+    from backend.models import db
+    from flask import current_app
+    
     logger.info(f"Started processing document ID: {document_id}")
     
     document = Document.query.get(document_id)
@@ -64,7 +216,7 @@ def convert_pdf_to_markdown(pdf_path, document_id):
 
     base_name = os.path.splitext(os.path.basename(pdf_path))[0]
     project_folder_name = base_name
-    project_folder_path = os.path.join(app.config['MARKDOWN_FOLDER'], project_folder_name)
+    project_folder_path = os.path.join(current_app.config['MARKDOWN_FOLDER'], project_folder_name)
     output_md_filename_in_project_folder = f"{base_name}.md"
     output_md_path = os.path.join(project_folder_path, output_md_filename_in_project_folder)
 
@@ -73,12 +225,12 @@ def convert_pdf_to_markdown(pdf_path, document_id):
         logger.info(f"Removing pre-existing project folder: {project_folder_path}")
         shutil.rmtree(project_folder_path)
 
-    logger.info(f"Executing command: pdf2md {pdf_path} {base_name} (cwd: {app.config['MARKDOWN_FOLDER']})")
+    logger.info(f"Executing command: pdf2md {pdf_path} {base_name} (cwd: {current_app.config['MARKDOWN_FOLDER']})")
     command = ['pdf2md', pdf_path, base_name]
 
     try:
         result = subprocess.run(command, capture_output=True, text=True, check=True,
-                                cwd=app.config['MARKDOWN_FOLDER'])
+                                cwd=current_app.config['MARKDOWN_FOLDER'])
         
         logger.info(f"pdf2md stdout: {result.stdout.strip()}")
         if result.stderr:
@@ -104,134 +256,8 @@ def convert_pdf_to_markdown(pdf_path, document_id):
         db.session.commit()
         raise Exception(f"PDF to Markdown conversion failed: {e}")
 
-# Routes
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/upload')
-def upload_page():
-    return render_template('upload.html')
-
-@app.route('/search')
-def search_page():
-    return render_template('search.html')
-
-@app.route('/viewer/<int:document_id>')
-def viewer_page(document_id):
-    document = Document.query.get(document_id)
-    if document:
-        return render_template('viewer.html', document=document)
-    return "Document not found", 404
-
-@app.route('/api/upload', methods=['POST'])
-def upload_file():
-    logger.info("--- START: POST /api/upload Request ---")
-    
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file part'}), 400
-    
-    file = request.files['file']
-    tags_json = request.form.get('tags')
-    title = request.form.get('title')
-
-    if file.filename == '':
-        return jsonify({'error': 'No selected file'}), 400
-
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        unique_id = os.urandom(16).hex()
-        final_filename = f"{unique_id}_{filename}"
-        pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], final_filename)
-
-        try:
-            file.save(pdf_path)
-            logger.info(f"File saved to: {pdf_path}")
-
-            new_document = Document(
-                title=title,
-                filename=final_filename,
-                filepath=pdf_path,
-                status='uploaded'
-            )
-
-            if tags_json:
-                try:
-                    tags_array = json.loads(tags_json)
-                    for tag_name in tags_array:
-                        tag = Tag.query.filter_by(name=tag_name).first()
-                        if not tag:
-                            tag = Tag(name=tag_name)
-                            db.session.add(tag)
-                        new_document.tags.append(tag)
-                except json.JSONDecodeError:
-                    logger.warning(f"Invalid JSON for tags: {tags_json}")
-
-            db.session.add(new_document)
-            db.session.commit()
-
-            document_id = new_document.id
-            logger.info(f"File uploaded and processing initiated for ID: {document_id}")
-
-            try:
-                convert_pdf_to_markdown(pdf_path, document_id)
-            except Exception as e:
-                logger.error(f"Error during conversion: {e}")
-
-            # Refresh the document to get latest status
-            db.session.refresh(new_document)
-            
-            return jsonify({
-                'message': 'File uploaded successfully, processing initiated',
-                'document': new_document.to_dict()
-            }), 201
-
-        except Exception as e:
-            logger.error(f"Error during upload: {e}")
-            db.session.rollback()
-            return jsonify({'error': f'Server error during upload: {e}'}), 500
-
-    return jsonify({'error': 'File type not allowed'}), 400
-
-@app.route('/api/documents', methods=['GET'])
-def get_documents():
-    logger.info("--- START: GET /api/documents Request ---")
-    
-    query = Document.query
-    
-    # Apply filters
-    q = request.args.get('q', '').strip()
-    tag_filter = request.args.get('tag', '').strip()
-    
-    if q:
-        query = query.filter(Document.title.ilike(f'%{q}%') | Document.filename.ilike(f'%{q}%'))
-    
-    if tag_filter:
-        query = query.join(Document.tags).filter(Tag.name == tag_filter)
-    
-    # Pagination
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
-    
-    pagination = query.order_by(Document.upload_date.desc()).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
-    
-    return jsonify({
-        'documents': [doc.to_dict() for doc in pagination.items],
-        'total': pagination.total,
-        'page': pagination.page,
-        'per_page': pagination.per_page,
-        'pages': pagination.pages
-    })
-
-@app.route('/api/documents/<int:document_id>/download', methods=['GET'])
-def download_pdf(document_id):
-    document = Document.query.get(document_id)
-    if not document or not document.filepath or not os.path.exists(document.filepath):
-        return jsonify({'error': 'PDF document not found'}), 404
-    
-    return send_from_directory(app.config['UPLOAD_FOLDER'], document.filename, as_attachment=True)
+# Create the app instance
+app = create_app()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5050, debug=True)
