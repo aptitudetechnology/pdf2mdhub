@@ -41,7 +41,8 @@ def create_app():
 
     # Import models and create tables within app context
     with app.app_context():
-        from backend.models.document import Document, Tag
+        from backend.models.document import Document
+        from backend.models.tag import Tag
         db.create_all()
 
     # Register blueprints
@@ -80,7 +81,8 @@ def register_routes(app):
     @app.route('/api/upload', methods=['POST'])
     def upload_file():
         # Import models at function level to avoid circular imports
-        from backend.models.document import Document, Tag
+        from backend.models.document import Document
+        from backend.models.tag import Tag
         from backend.models import db
         
         logger.info("--- START: POST /api/upload Request ---")
@@ -153,7 +155,8 @@ def register_routes(app):
     @app.route('/api/documents', methods=['GET'])
     def get_documents():
         # Import models at function level to avoid circular imports
-        from backend.models.document import Document, Tag
+        from backend.models.document import Document
+        from backend.models.tag import Tag
         
         logger.info("--- START: GET /api/documents Request ---")
         
