@@ -34,6 +34,15 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
+
+# Initialize extensions
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+# Register the 'db' command for Flask CLI
+from flask_migrate import MigrateCommand # Add this import
+app.cli.add_command('db', MigrateCommand) # Add this line
+
 # Configure Content Security Policy (CSP) headers
 # For local development with external CDN (jsdelivr for marked.js previously) and PDF embedding
 # If you are removing marked.js and using server-side rendering, 'unsafe-eval' might not be strictly needed for that,
