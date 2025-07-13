@@ -1,90 +1,878 @@
-# Proposed HTML Templates for PDF2MD Hub
+/* Global Resets and Base Styles */
+:root {
+    --primary-color: #007bff;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --info-color: #17a2b8;
+    --warning-color: #ffc107;
 
-This document summarizes the purpose and key structural elements of the HTML templates implemented for the PDF2MD Document Management System. These templates are built using Flask's Jinja2 templating engine and aim for a modern, responsive user interface.
+    --background-light: #f8f9fa;
+    --surface-light: #ffffff;
+    --text-color-light: #343a40;
+    --border-color-light: #e9ecef;
+    --shadow-light: rgba(0, 0, 0, 0.08);
 
-## 1. `templates/base.html`
+    /* Dark theme variables - will be overridden by prefers-color-scheme */
+    --background-dark: #212529;
+    --surface-dark: #343a40;
+    --text-color-dark: #f8f9fa;
+    --border-color-dark: #495057;
+    --shadow-dark: rgba(0, 0, 0, 0.3);
 
-This is the foundational template for the entire application, providing the basic HTML structure, shared head elements, and a consistent navigation and footer.
+    --transition-speed: 0.3s ease;
+    --border-radius: 8px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+}
 
-**Key Elements:**
-* **DOCTYPE & Head**: Standard HTML5 declaration, viewport meta tag, and `title` tag.
-* **CSS Link**: Includes `static/css/styles.css` for global styling.
-* **JavaScript Includes**:
-    * `https://cdn.jsdelivr.net/npm/@opengovsg/pdf2md@latest/dist/pdf2md.min.js`: The client-side PDF to Markdown conversion library.
-    * `{{ url_for('static', filename='js/pdf2md.js') }}`: Your application's core JavaScript logic for PDF conversion.
-* **Header (`.app-header`)**: Contains the application logo/title and a main navigation bar with links to "Upload" and "Search" pages.
-* **Main Content Area (`<main class="container">` and `{% block content %}`):** This is the dynamic area where specific page content from child templates will be injected.
-* **Footer (`.app-footer`)**: Displays copyright information and can include global scripts.
+/* Light Theme Defaults */
+body {
+    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    background-color: var(--background-light);
+    color: var(--text-color-light);
+    transition: background-color var(--transition-speed), color var(--transition-speed);
+}
 
-**Purpose:** Ensures a consistent look and feel, and loads essential global resources (CSS, core JS libraries) across all pages.
+/* Dark Theme Overrides */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: var(--background-dark);
+        color: var(--text-color-dark);
+    }
+    :root {
+        --background-light: var(--background-dark);
+        --surface-light: var(--surface-dark);
+        --text-color-light: var(--text-color-dark);
+        --border-color-light: var(--border-color-dark);
+        --shadow-light: var(--shadow-dark);
+    }
+}
 
-## 2. `templates/components/document_card.html`
+*, *::before, *::after {
+    box-sizing: border-box;
+}
 
-A reusable component designed to display a compact summary of a document, typically used within search results or document listings.
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
 
-**Key Elements:**
-* **Root Element (`.document-card`)**: Acts as a container for styling.
-* **Thumbnail (`.card-thumbnail`)**: Displays an image preview of the document (or a default placeholder).
-* **Content Area (`.card-content`)**: Contains the document's title, a brief summary, and a list of associated tags.
-* **Tags (`.card-tags`)**: Iterates through `doc.tags` to display individual tags as styled badges.
-* **View Link (`.card-link`)**: A direct link to the full document viewer page.
+a:hover {
+    text-decoration: underline;
+}
 
-**Purpose:** Provides a consistent and visually appealing way to present document summaries in grid or list views, enhancing discoverability.
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-color-light); /* Use light text color for headings, it will adapt */
+    margin-top: 0;
+    margin-bottom: var(--spacing-md);
+}
 
-## 3. `templates/components/metadata_block.html`
+/* Layout */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--spacing-md);
+}
 
-Another reusable component for displaying detailed metadata associated with a document, particularly useful in the document viewer.
+.main-content-area {
+    background-color: var(--surface-light);
+    padding: var(--spacing-lg);
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 12px var(--shadow-light);
+    margin-bottom: var(--spacing-lg);
+}
 
-**Key Elements:**
-* **Sidebar (`.metadata-sidebar`)**: The main container, likely to be styled as a sidebar in the viewer.
-* **Document Details (`<h3>` and `.metadata-list`)**: Displays key document properties such as title, filename, size, upload date, processing status, and notes.
-* **Tags (`.metadata-tags`)**: Similar to `document_card.html`, it displays tags associated with the document.
-* **Edit Button (`.edit-metadata-btn`)**: A button to potentially trigger a modal or navigation for editing the document's metadata.
+/* Header & Footer */
+.app-header {
+    background-color: var(--surface-light);
+    border-bottom: 1px solid var(--border-color-light);
+    padding: var(--spacing-md) var(--spacing-lg);
+    box-shadow: 0 2px 4px var(--shadow-light);
+    margin-bottom: var(--spacing-lg);
+}
 
-**Purpose:** Centralizes the display of detailed document attributes, providing users with comprehensive information at a glance.
+.main-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+}
 
-## 4. `templates/upload.html`
+.logo {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--primary-color);
+}
 
-This template defines the user interface for uploading new PDF documents, supporting drag-and-drop and file input, along with progress tracking and metadata entry.
+.nav-links {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: var(--spacing-md);
+}
 
-**Key Elements:**
-* **Main Container (`#upload-container`)**: Holds all upload-related elements.
-* **Section Header (`.section-header`)**: Provides a title and description for the upload section.
-* **Drop Zone (`#drop-zone`)**: A visually prominent area for drag-and-drop file interaction, with a hidden file input linked to a "Select Files" button.
-* **Upload Queue (`#upload-queue`)**: A dynamic area where `upload.js` will inject individual file progress bars and status messages.
-* **Overall Progress Container (`#overall-progress-container`)**: Displays a general progress bar for all ongoing uploads.
-* **Metadata Form (`#metadata-form`)**: Allows users to enter common tags and a title for the batch of documents being uploaded, before conversion/upload.
+.nav-links a {
+    color: var(--text-color-light);
+    font-weight: 500;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--border-radius);
+    transition: background-color var(--transition-speed);
+}
 
-**Purpose:** To provide an intuitive and interactive interface for users to upload and initiate the conversion of PDF documents, including preliminary metadata tagging.
+.nav-links a:hover {
+    background-color: var(--border-color-light);
+    text-decoration: none;
+}
 
-## 5. `templates/viewer.html`
+.app-footer {
+    text-align: center;
+    padding: var(--spacing-lg);
+    color: var(--secondary-color);
+    font-size: 0.9em;
+    border-top: 1px solid var(--border-color-light);
+    margin-top: var(--spacing-lg);
+}
 
-This template presents a dedicated view for a single document, featuring a side-by-side preview of the original PDF and its converted Markdown content.
+/* Buttons & Inputs */
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 1em;
+    font-weight: 600;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background-color var(--transition-speed), color var(--transition-speed), border-color var(--transition-speed);
+}
 
-**Key Elements:**
-* **Main Container (`#viewer-container`)**: The primary wrapper for the viewer interface.
-* **Viewer Header (`.viewer-header`)**: Displays the document title and a toolbar with actions like download (PDF/MD), edit metadata, and delete.
-* **Split-Pane (`#split-pane`)**: Divides the screen into two main areas:
-    * **PDF Pane (`.pdf-pane`)**: Contains an `<iframe>` to display the PDF.
-    * **Markdown Pane (`.markdown-pane`)**: Displays the converted Markdown content (expected to be rendered, potentially by a JS library like `markdown-it`).
-* **Metadata Sidebar**: Includes the `components/metadata_block.html` for detailed document information.
-* **Comments/Notes Section (`#comments-section`)**: A text area for users to add or view notes associated with the document, with a save button.
+.button:hover {
+    opacity: 0.9;
+    text-decoration: none;
+}
 
-**Purpose:** Offers a rich viewing experience for documents, allowing users to compare the original PDF with its Markdown conversion and manage document-specific details.
+.primary-button {
+    background-color: var(--primary-color);
+    color: white;
+}
 
-## 6. `templates/search.html`
+.primary-button:hover {
+    background-color: darken(var(--primary-color), 10%); /* conceptual darken, adjust manually or use JS if needed */
+}
 
-This template provides a comprehensive search interface for documents, including search input, filters, results display, and pagination controls.
+.secondary-button {
+    background-color: var(--secondary-color);
+    color: white;
+}
 
-**Key Elements:**
-* **Main Container (`#search-container`)**: Wraps all search-related UI.
-* **Section Header (`.section-header`)**: Provides a title and description for the search functionality.
-* **Search Input Group (`.search-input-group`)**: Contains the primary search bar and a search button.
-* **Search Filters (`#search-filters`)**: A sidebar or section with filtering options, including:
-    * Tag filter dropdown.
-    * Date range inputs (`date-from`, `date-to`).
-    * Buttons to apply and clear filters.
-* **Search Results Grid (`#search-results`)**: The area where search results are displayed, typically by including multiple instances of `components/document_card.html`.
-* **Pagination Controls (`#pagination-controls`)**: Buttons and information to navigate through multiple pages of search results.
+.secondary-button:hover {
+    background-color: darken(var(--secondary-color), 10%);
+}
 
-**Purpose:** Enables users to efficiently discover documents through full-text search and advanced filtering by metadata.
+.success-button {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.success-button:hover {
+    background-color: darken(var(--success-color), 10%);
+}
+
+.danger-button {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.danger-button:hover {
+    background-color: darken(var(--danger-color), 10%);
+}
+
+.transparent-button {
+    background: none;
+    border: 1px solid var(--border-color-light);
+    color: var(--text-color-light);
+}
+
+.transparent-button:hover {
+    background-color: var(--border-color-light);
+}
+
+.text-input,
+.select-input,
+textarea {
+    width: 100%;
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius);
+    background-color: var(--surface-light);
+    color: var(--text-color-light);
+    font-size: 1em;
+    transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
+}
+
+.text-input:focus,
+.select-input:focus,
+textarea:focus {
+    border-color: var(--primary-color);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+    margin-bottom: var(--spacing-md);
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: var(--spacing-sm);
+    font-weight: 500;
+}
+
+/* Utility Classes */
+.hidden {
+    display: none !important;
+}
+
+.section-header {
+    text-align: center;
+    margin-bottom: var(--spacing-lg);
+}
+
+.section-header h2 {
+    font-size: 2em;
+    margin-bottom: var(--spacing-sm);
+}
+
+.section-header p {
+    color: var(--secondary-color);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Upload Page Specifics */
+.drop-zone {
+    border: 2px dashed var(--border-color-light);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-lg);
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    margin-bottom: var(--spacing-lg);
+}
+
+.drop-zone:hover,
+.drop-zone.drag-over {
+    background-color: var(--border-color-light);
+    border-color: var(--primary-color);
+}
+
+.drop-zone-text {
+    font-size: 1.2em;
+    font-weight: 500;
+    margin-bottom: var(--spacing-sm);
+}
+
+.drop-zone-or {
+    color: var(--secondary-color);
+    margin-bottom: var(--spacing-sm);
+}
+
+.upload-queue {
+    background-color: var(--background-light);
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    min-height: 80px; /* Placeholder height */
+}
+
+.queue-placeholder {
+    text-align: center;
+    color: var(--secondary-color);
+    padding: var(--spacing-md);
+}
+
+.file-upload-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) 0;
+    border-bottom: 1px solid var(--border-color-light);
+}
+
+.file-upload-item:last-child {
+    border-bottom: none;
+}
+
+.file-name {
+    flex-grow: 1;
+    font-weight: 500;
+}
+
+.file-status {
+    font-size: 0.9em;
+    color: var(--secondary-color);
+}
+
+.overall-progress-container {
+    margin-bottom: var(--spacing-lg);
+    text-align: center;
+}
+
+#overall-upload-progress {
+    width: 100%;
+    height: 10px;
+    border-radius: 5px;
+    appearance: none;
+    -webkit-appearance: none;
+    overflow: hidden; /* For progress bar styling */
+}
+
+#overall-upload-progress::-webkit-progress-bar {
+    background-color: var(--border-color-light);
+    border-radius: 5px;
+}
+
+#overall-upload-progress::-webkit-progress-value {
+    background-color: var(--success-color);
+    border-radius: 5px;
+    transition: width 0.3s ease;
+}
+
+#overall-upload-progress::-moz-progress-bar {
+    background-color: var(--success-color);
+    border-radius: 5px;
+}
+
+.overall-progress-container h4 {
+    margin-bottom: var(--spacing-sm);
+}
+
+.overall-progress-text {
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.metadata-form {
+    padding: var(--spacing-lg);
+    background-color: var(--background-light); /* Lighter background for form */
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color-light);
+}
+
+.metadata-form .form-description {
+    font-size: 0.9em;
+    color: var(--secondary-color);
+    margin-bottom: var(--spacing-md);
+}
+
+/* Document Card Component */
+.document-card {
+    background-color: var(--surface-light);
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 8px var(--shadow-light);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.document-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 16px var(--shadow-light);
+}
+
+.card-thumbnail {
+    flex-shrink: 0; /* Prevents thumbnail from shrinking */
+    width: 100%;
+    height: 180px; /* Fixed height for consistency */
+    background-color: var(--border-color-light); /* Placeholder background */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden; /* Ensure image fits */
+}
+
+.card-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* Ensures the whole image is visible */
+}
+
+.card-content {
+    padding: var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Allows content to expand */
+}
+
+.card-title {
+    font-size: 1.2em;
+    margin-bottom: var(--spacing-sm);
+    color: var(--primary-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-summary {
+    font-size: 0.9em;
+    color: var(--secondary-color);
+    margin-bottom: var(--spacing-md);
+    flex-grow: 1; /* Pushes tags and link to bottom */
+    display: -webkit-box;
+    -webkit-line-clamp: 3; /* Limit to 3 lines */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.card-tags {
+    margin-top: auto; /* Pushes tags to the bottom */
+    margin-bottom: var(--spacing-sm);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.tag {
+    display: inline-block;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    white-space: nowrap;
+}
+
+.tag.no-tag {
+    background-color: var(--secondary-color);
+}
+
+.card-link {
+    align-self: flex-start; /* Aligns to the left */
+    margin-top: var(--spacing-sm);
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* Document Viewer Specifics */
+.viewer-grid {
+    display: grid;
+    grid-template-areas:
+        "header header"
+        "pdf markdown"
+        "sidebar comments"; /* Will adjust for larger screens */
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-lg); /* Ensure it's below the main header */
+}
+
+.viewer-header {
+    grid-area: header;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+}
+
+.viewer-header h2 {
+    margin: 0;
+    font-size: 1.8em;
+}
+
+.viewer-toolbar {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+}
+
+.split-pane {
+    display: flex;
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius);
+    overflow: hidden; /* For rounded corners */
+    min-height: 600px;
+    grid-area: pdf / markdown; /* Spans across both areas in initial setup */
+}
+
+.pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border-color-light);
+}
+
+.pane:last-child {
+    border-right: none;
+}
+
+.pane-title {
+    font-size: 1.1em;
+    font-weight: 600;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: var(--background-light);
+    border-bottom: 1px solid var(--border-color-light);
+    margin: 0;
+}
+
+#pdf-viewer,
+.markdown-body {
+    flex-grow: 1;
+    padding: var(--spacing-md);
+    overflow-y: auto; /* Scroll for content */
+    background-color: var(--surface-light); /* Ensure consistent background */
+}
+
+#pdf-viewer {
+    border: none;
+}
+
+.viewer-placeholder {
+    text-align: center;
+    padding: var(--spacing-lg);
+    color: var(--secondary-color);
+    font-style: italic;
+}
+
+.metadata-sidebar {
+    grid-area: sidebar;
+    background-color: var(--background-light);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    border: 1px solid var(--border-color-light);
+}
+
+.metadata-sidebar h3 {
+    margin-bottom: var(--spacing-md);
+    font-size: 1.4em;
+    border-bottom: 1px solid var(--border-color-light);
+    padding-bottom: var(--spacing-sm);
+}
+
+.metadata-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.metadata-list li {
+    margin-bottom: var(--spacing-sm);
+    font-size: 0.95em;
+    line-height: 1.4;
+}
+
+.metadata-list li strong {
+    color: var(--primary-color);
+}
+
+.metadata-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.status-processed { color: var(--success-color); font-weight: bold; }
+.status-pending { color: var(--warning-color); font-weight: bold; }
+.status-failed { color: var(--danger-color); font-weight: bold; }
+
+.edit-metadata-btn {
+    width: 100%;
+    margin-top: var(--spacing-md);
+    background-color: var(--info-color);
+    color: white;
+}
+
+.comments-section {
+    grid-area: comments;
+    background-color: var(--surface-light);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    box-shadow: 0 2px 8px var(--shadow-light);
+}
+
+.comments-section h3 {
+    margin-bottom: var(--spacing-md);
+    font-size: 1.4em;
+}
+
+/* Search Page Specifics */
+.search-grid {
+    display: grid;
+    grid-template-columns: 1fr; /* Default to single column */
+    gap: var(--spacing-lg);
+}
+
+.search-input-group {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+}
+
+.search-input {
+    flex-grow: 1;
+}
+
+.search-filters {
+    background-color: var(--background-light);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    border: 1px solid var(--border-color-light);
+    margin-bottom: var(--spacing-lg);
+}
+
+.search-filters h3 {
+    margin-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color-light);
+    padding-bottom: var(--spacing-sm);
+}
+
+.filter-group {
+    margin-bottom: var(--spacing-md);
+}
+
+.filter-group label {
+    display: block;
+    margin-bottom: var(--spacing-sm);
+    font-weight: 500;
+}
+
+.date-input {
+    flex: 1;
+}
+
+.search-results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+}
+
+.no-results-message {
+    grid-column: 1 / -1; /* Span across all columns */
+    text-align: center;
+    color: var(--secondary-color);
+    padding: var(--spacing-lg);
+    font-style: italic;
+}
+
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background-color: var(--background-light);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color-light);
+}
+
+.pagination-button {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.pagination-button:disabled {
+    background-color: var(--secondary-color);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Markdown Body Basic Styling (for markdown-viewer) */
+.markdown-body {
+    font-size: 1em;
+    line-height: 1.7;
+}
+
+.markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+.markdown-body h1 { font-size: 2em; }
+.markdown-body h2 { font-size: 1.75em; }
+.markdown-body h3 { font-size: 1.5em; }
+.markdown-body h4 { font-size: 1.25em; }
+
+.markdown-body p {
+    margin-bottom: 1em;
+}
+
+.markdown-body a {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+
+.markdown-body ul, .markdown-body ol {
+    margin-bottom: 1em;
+    padding-left: 20px;
+}
+
+.markdown-body li {
+    margin-bottom: 0.5em;
+}
+
+.markdown-body code {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    background-color: var(--border-color-light);
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+.markdown-body pre {
+    background-color: var(--surface-dark); /* Dark background for code blocks */
+    color: var(--text-color-dark); /* Light text for code blocks */
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius);
+    overflow-x: auto;
+    margin-bottom: 1em;
+}
+
+.markdown-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1em;
+    background-color: var(--surface-light);
+}
+
+.markdown-body th, .markdown-body td {
+    border: 1px solid var(--border-color-light);
+    padding: var(--spacing-sm);
+    text-align: left;
+}
+
+.markdown-body th {
+    background-color: var(--background-light);
+    font-weight: bold;
+}
+
+.markdown-body img {
+    max-width: 100%;
+    height: auto;
+    display: block; /* Remove extra space below images */
+    margin: 0 auto 1em auto;
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 8px var(--shadow-light);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .main-nav {
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+    .nav-links {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+        width: 100%;
+        text-align: center;
+    }
+    .nav-links a {
+        display: block;
+    }
+
+    .section-header h2 {
+        font-size: 1.6em;
+    }
+
+    /* Viewer Grid for smaller screens */
+    .viewer-grid {
+        grid-template-areas:
+            "header"
+            "pdf"
+            "markdown"
+            "sidebar"
+            "comments";
+        grid-template-columns: 1fr;
+    }
+
+    .split-pane {
+        flex-direction: column;
+        min-height: auto;
+    }
+
+    .pane {
+        border-right: none;
+        border-bottom: 1px solid var(--border-color-light);
+    }
+
+    .pane:last-child {
+        border-bottom: none;
+    }
+
+    /* Search Grid for smaller screens */
+    .search-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .search-results-grid {
+        grid-template-columns: 1fr; /* Single column for cards */
+    }
+
+    .search-input-group {
+        flex-direction: column;
+    }
+
+    .search-button {
+        width: 100%;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+}
+
+@media (min-width: 769px) {
+    /* Adjust viewer grid for larger screens */
+    .viewer-grid {
+        grid-template-areas:
+            "header header"
+            "pdf sidebar"
+            "markdown sidebar"
+            "comments comments";
+        grid-template-columns: 3fr 1fr; /* PDF/Markdown wider, sidebar narrower */
+    }
+    /* Move comments to span below pdf/markdown and sidebar */
+    .comments-section {
+        grid-column: 1 / -1; /* Span full width */
+    }
+
+    /* Adjust search grid for larger screens */
+    .search-grid {
+        grid-template-columns: 1fr 3fr; /* Sidebar for filters, results grid */
+        grid-template-areas:
+            "filters search-input"
+            "filters results"
+            "filters pagination";
+    }
+
+    .search-filters {
+        grid-area: filters;
+        margin-bottom: 0; /* No bottom margin when it's a sidebar */
+    }
+
+    .search-input-group {
+        grid-area: search-input;
+        margin-bottom: var(--spacing-md); /* Keep margin for input group */
+    }
+
+    .search-results-grid {
+        grid-area: results;
+        margin-bottom: var(--spacing-md); /* Keep margin for results */
+    }
+
+    .pagination-controls {
+        grid-area: pagination;
+    }
+}
