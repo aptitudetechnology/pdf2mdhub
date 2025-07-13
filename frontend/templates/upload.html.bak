@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<div id="upload-container">
+    <h2>Upload PDF Documents</h2>
+    <div id="drop-zone">Drag & drop files here or click to select</div>
+    <input type="file" id="file-input" multiple accept="application/pdf">
+    <div id="progress-container">
+        <progress id="upload-progress" value="0" max="100"></progress>
+    </div>
+    <form id="metadata-form">
+        <input type="text" name="tags" placeholder="Tags (comma separated)">
+        <input type="text" name="title" placeholder="Document Title">
+        <!-- Add more metadata fields as needed -->
+        <button type="submit">Submit Metadata</button>
+    </form>
+</div>
+<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+{% endblock %}
