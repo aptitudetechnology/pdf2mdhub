@@ -24,8 +24,8 @@ pip install -e .
 
 ## Architecture
 
-- **Frontend**: Modern web interface with drag-and-drop upload
-- **Backend**: Flask API with document management
+- **Frontend**: Modern web interface with drag-and-drop upload.
+- **Backend**: Flask API with document management.
 - **Plugin**: Python plugin for middleware integration
 - **Processing**: Client-side PDF to Markdown conversion
 
