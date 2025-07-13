@@ -40,6 +40,10 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
 
 # --- END CORRECTED APP INITIALIZATION BLOCK ---
 
+## Add lines for debugging
+
+print(f"DEBUG: App template folder set to: {app.template_folder}")
+print(f"DEBUG: App static folder set to: {app.static_folder}")
 
 # Initialize extensions (these must be initialized AFTER 'app' is defined)
 db = SQLAlchemy(app)
