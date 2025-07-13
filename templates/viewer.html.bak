@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<div id="viewer-container" data-document-id="{{ document.id }}">
+    <div id="toolbar">
+        <button id="download-btn">Download</button>
+        <button id="edit-btn">Edit</button>
+        <button id="delete-btn">Delete</button>
+    </div>
+    <div id="split-pane">
+        <iframe id="pdf-viewer" src="{{ pdf_url }}"></iframe>
+        <div id="markdown-viewer">{{ markdown_content|safe }}</div>
+    </div>
+    {% include "components/metadata_block.html" %}
+    <section id="comments-section">
+        <h3>Comments/Notes</h3>
+        <!-- Comments UI here -->
+    </section>
+</div>
+<script src="{{ url_for('static', filename='js/document-viewer.js') }}"></script>
+{% endblock %}

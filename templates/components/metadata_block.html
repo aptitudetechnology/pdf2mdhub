@@ -1,8 +1,25 @@
-<aside id="metadata-sidebar">
-    <h3>Metadata</h3>
-    <ul>
-        <li>Title: {{ document.title }}</li>
-        <li>Tags: {{ document.tags }}</li>
-        <!-- Add more metadata fields as needed -->
-    </ul>
+<aside id="metadata-sidebar" class="metadata-sidebar">
+    <h3>Document Details</h3>
+    <ul class="metadata-list">
+        <li><strong>Title:</strong> {{ document.title }}</li>
+        <li><strong>Filename:</strong> {{ document.original_name }}</li>
+        <li><strong>Size:</strong> {{ (document.file_size / 1024 / 1024)|round(2) }} MB</li>
+        <li><strong>Uploaded:</strong> {{ document.upload_date.strftime('%Y-%m-%d %H:%M') }}</li>
+        <li><strong>Status:</strong> <span class="status-{{ document.status | lower }}">{{ document.status }}</span></li>
+        <li><strong>Tags:</strong>
+            <div class="metadata-tags">
+                {% if document.tags %}
+                    {% for tag in document.tags.split(',') %}
+                        <span class="tag">{{ tag.strip() }}</span>
+                    {% endfor %}
+                {% else %}
+                    <span class="tag no-tag">None</span>
+                {% endif %}
+            </div>
+        </li>
+        {% if document.notes %}
+        <li><strong>Notes:</strong> <p class="metadata-notes">{{ document.notes }}</p></li>
+        {% endif %}
+        </ul>
+    <button class="edit-metadata-btn">Edit Metadata</button>
 </aside>
