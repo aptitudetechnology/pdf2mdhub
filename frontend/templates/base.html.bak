@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/@opengovsg/pdf2md@latest/dist/pdf2md.min.js"></script>
     <script src="{{ url_for('static', filename='js/pdf2md.js') }}"></script>
+    {{ moment.include_moment() }}
 </head>
 <body>
     {% block content %}{% endblock %}
