@@ -111,7 +111,13 @@ def convert_pdf_to_markdown(pdf_path):
         # Assuming `pdf2md` is in your PATH.
         # Check `pdf2md --help` for correct arguments if this command fails.
         # Common usage: `pdf2md <input_pdf_path> -o <output_md_path>`
-        command = ['pdf2md', str(pdf_path), '-o', str(output_md_path)]
+        #command = ['pdf2md', str(pdf_path), '-o', str(output_md_path)]
+
+        # Assuming 'output_path' contains the full path including the desired filename without extension
+        # For example, if output_path is 'uploads/myfile.md', then you want 'myfile' as projectname.
+        # You might need to extract the base name from output_path.
+        output_basename = os.path.splitext(os.path.basename(output_path))[0]
+        command = ['pdf2md', pdf_path, output_basename]
 
         logger.info(f"Executing PDF to Markdown conversion command: {' '.join(command)}")
 
