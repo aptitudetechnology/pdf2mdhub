@@ -10,7 +10,7 @@
             <div class="metadata-tags">
                 {% if document.tags %}
                    {% for tag in document.tags %}
-                        <span class="tag">{{ tag.strip() }}</span>
+                       <span class="tag">{{ tag.name.strip() }}</span>
                     {% endfor %}
                 {% else %}
                     <span class="tag no-tag">None</span>
