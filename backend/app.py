@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, render_template, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
+from flask_moment import Moment
 from datetime import datetime
 import os
 import uuid
@@ -25,6 +26,7 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
 # Initialize extensions
 db = SQLAlchemy(app)
 CORS(app)
+moment = Moment(app)
 
 # Ensure upload directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
