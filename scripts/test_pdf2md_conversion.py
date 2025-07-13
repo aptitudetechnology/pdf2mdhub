@@ -2,6 +2,7 @@ import subprocess
 import os
 import logging
 import requests
+from pathlib import Path
 
 # Configure basic logging for the script
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -26,11 +27,25 @@ def download_test_pdf(url, destination_path):
         logger.error(f"An unexpected error occurred during download: {e}", exc_info=True)
         return False
 
+def find_generated_md_file(search_directory, expected_base_name):
+    """
+    Recursively searches a directory for a Markdown file matching the expected base name.
+    Returns the path of the found file, or None if not found.
+    """
+    logger.info(f"Searching for '{expected_base_name}.md' in '{search_directory}' and its subdirectories...")
+    # Use pathlib.Path.rglob for recursive search
+    for file_path in Path(search_directory).rglob(f"{expected_base_name}.md"):
+        logger.info(f"Found generated Markdown file at: {file_path}")
+        return file_path
+    logger.warning(f"Generated Markdown file '{expected_base_name}.md' not found in '{search_directory}' or its subdirectories.")
+    return None
+
 def test_pdf2md_command(pdf_filename="test_invoice.pdf"):
     """
     Tests the pdf2md command line tool.
     Assumes a 'uploads' folder exists in the same directory as this script.
     If the specified PDF file is not found, it downloads a default test PDF.
+    After conversion, it searches for the generated MD file.
     """
     logger.info(f"--- Starting test for pdf2md with {pdf_filename} ---")
 
@@ -48,13 +63,17 @@ def test_pdf2md_command(pdf_filename="test_invoice.pdf"):
     # Extract base name for pdf2md's projectname argument (e.g., 'test_invoice')
     base_name = os.path.splitext(os.path.basename(pdf_path))[0]
     
-    # Expected output Markdown file path
-    output_md_path = os.path.join(UPLOADS_DIR, f"{base_name}.md")
+    # Clean up potential previous test outputs
+    # We'll search and remove any .md files or folders with the base_name
+    for entry in Path(UPLOADS_DIR).glob(f"{base_name}*"):
+        if entry.is_file() and entry.suffix == '.md':
+            os.remove(entry)
+            logger.info(f"Cleaned up existing MD file: {entry}")
+        elif entry.is_dir() and entry.name.startswith(base_name):
+            import shutil
+            shutil.rmtree(entry)
+            logger.info(f"Cleaned up existing directory: {entry}")
 
-    # Clean up previous test output if it exists
-    if os.path.exists(output_md_path):
-        os.remove(output_md_path)
-        logger.info(f"Cleaned up existing output: {output_md_path}")
 
     if not os.path.exists(pdf_path):
         logger.warning(f"Test PDF not found at: {pdf_path}")
@@ -67,16 +86,14 @@ def test_pdf2md_command(pdf_filename="test_invoice.pdf"):
             pdf_path = default_pdf_path
             pdf_filename = default_pdf_filename
             base_name = os.path.splitext(os.path.basename(pdf_path))[0]
-            output_md_path = os.path.join(UPLOADS_DIR, f"{base_name}.md")
             logger.info(f"Using downloaded PDF for conversion: {pdf_path}")
         else:
             logger.error("Failed to download a test PDF. Cannot proceed with conversion test.")
             return False
 
     logger.info(f"Attempting to convert PDF: {pdf_path}")
-    logger.info(f"Expected output Markdown: {output_md_path}")
 
-    # The command as determined from previous logs: pdf2md <file.pdf> <projectname>
+    # The command: pdf2md <file.pdf> <projectname>
     command = ['pdf2md', pdf_path, base_name]
 
     logger.info(f"Executing command: {' '.join(command)}")
@@ -89,20 +106,22 @@ def test_pdf2md_command(pdf_filename="test_invoice.pdf"):
         if result.stderr:
             logger.warning(f"pdf2md stderr: {result.stderr.strip()}")
 
-        # Verify if the markdown file was created
-        if os.path.exists(output_md_path):
-            logger.info(f"SUCCESS: Markdown file created at: {output_md_path}")
+        # Now, instead of assuming a fixed path, search for the file
+        found_md_path = find_generated_md_file(UPLOADS_DIR, base_name)
+
+        if found_md_path:
+            logger.info(f"SUCCESS: Markdown file found at: {found_md_path}")
             # Optionally, read and print a bit of content
             try:
-                with open(output_md_path, 'r', encoding='utf-8') as f:
+                with open(found_md_path, 'r', encoding='utf-8') as f:
                     content = f.read(200) # Read first 200 characters
                     logger.info(f"First 200 chars of Markdown content:\n---\n{content}\n---")
             except Exception as e:
                 logger.error(f"Could not read generated Markdown file: {e}")
             return True
         else:
-            logger.error(f"FAILURE: Markdown file NOT found after conversion: {output_md_path}")
-            logger.error("pdf2md might have run but failed to create the file at the expected location.")
+            logger.error(f"FAILURE: Markdown file with base name '{base_name}' NOT found after conversion in '{UPLOADS_DIR}' or its subdirectories.")
+            logger.error("pdf2md might have run but failed to create the file or placed it unexpectedly.")
             return False
 
     except FileNotFoundError:
