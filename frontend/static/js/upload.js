@@ -151,7 +151,7 @@ class UploadInterface {
         this.uploadButton.disabled = true; // Disable button to prevent re-submission
 
         const commonTagsRaw = this.formTagsInput.value.trim();
-        //const commonTitle = this.formTitleInput.value.trim();
+        const commonTitle = this.formTitleInput.value.trim();
 
         // --- FIX: Process Tags for JSON before sending ---
         let tagsArray = [];
@@ -196,7 +196,7 @@ class UploadInterface {
 
                 // Send the file and markdown content to the backend
                 const formData = new FormData();
-                //formData.append('pdf_file', file);
+                formData.append('pdf_file', file);
                 formData.append('file', file); // Change 'pdf_file' to 'file'
                 formData.append('markdown_content', markdownContent);
                 formData.append('tags', tagsJsonString); // Append the JSON stringified tags
