@@ -98,11 +98,11 @@ class SearchInterface {
 
             console.log("DEBUG: Received data from /api/search:", data); // DEBUG: Raw data from backend
 
-            // --- IMPORTANT: This part is adjusted to match your backend's JSON structure ---
-            // Your backend's /api/search endpoint returns data like:
-            // { documents: [...], total_pages: X, current_page: Y }
-            this.renderResults(data.documents);
-            this.updatePagination(data.current_page, data.total_pages);
+            // --- CRITICAL CHANGE HERE: Adjusting to your backend's actual JSON structure ---
+            // Your backend's /api/search endpoint now returns:
+            // { results: [...], pagination: { page: X, pages: Y, ... } }
+            this.renderResults(data.results); // Pass data.results to render the documents
+            this.updatePagination(data.pagination.page, data.pagination.pages); // Use data.pagination object for page info
             console.log("DEBUG: renderResults and updatePagination called."); // DEBUG: Confirmation
 
         } catch (error) {
