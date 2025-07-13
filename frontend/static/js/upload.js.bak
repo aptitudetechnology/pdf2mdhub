@@ -20,9 +20,7 @@ class UploadInterface {
         // Ensure PDF2MDProcessor is accessible, assuming it's a global instance or singleton
         if (typeof PDF2MDProcessor === 'undefined') {
             console.error("PDF2MDProcessor not found. Ensure pdf2md.js is loaded correctly.");
-            // Fallback or error handling, maybe disable functionality
-            this.uploadButton.disabled = true;
-            this.dropZone.removeEventListener('click', () => this.fileInput.click()); // Disable drop zone click
+            // Fallback or error handling
             return;
         }
         this.pdf2mdProcessor = new PDF2MDProcessor();
@@ -80,13 +78,11 @@ class UploadInterface {
         this.overallProgressContainer.classList.add('hidden'); // Hide overall progress until upload starts
 
         // Clear previous queue if new files are selected
-        // This assumes single-batch uploads. If you want to add to existing queue, adjust this.
-        this.filesToUpload = [];
-        this.uploadQueue.innerHTML = ''; // Clear existing queue display
-        const queuePlaceholder = this.uploadQueue.querySelector('.queue-placeholder');
-        if (queuePlaceholder) queuePlaceholder.remove();
-        this.uploadQueue.classList.remove('hidden');
-
+        if (this.filesToUpload.length === 0) {
+            this.uploadQueue.innerHTML = '';
+            this.uploadQueue.classList.remove('hidden');
+            this.uploadQueue.querySelector('.queue-placeholder')?.remove();
+        }
 
         Array.from(files).forEach(file => {
             if (file.type === 'application/pdf') {
@@ -128,13 +124,6 @@ class UploadInterface {
             this.uploadButton.textContent = 'No Files Selected';
             this.uploadButton.disabled = true;
             this.metadataForm.classList.add('hidden');
-            // If the queue is empty, restore the placeholder
-            if (!this.uploadQueue.querySelector('.queue-placeholder')) {
-                const placeholder = document.createElement('p');
-                placeholder.className = 'queue-placeholder';
-                placeholder.textContent = 'No files selected yet.';
-                this.uploadQueue.appendChild(placeholder);
-            }
         }
     }
 
@@ -150,26 +139,11 @@ class UploadInterface {
         this.overallProgressContainer.classList.remove('hidden');
         this.uploadButton.disabled = true; // Disable button to prevent re-submission
 
-        const commonTagsRaw = this.formTagsInput.value.trim();
+        const commonTags = this.formTagsInput.value.trim();
         const commonTitle = this.formTitleInput.value.trim();
-
-        // --- FIX: Process Tags for JSON before sending ---
-        let tagsArray = [];
-        if (commonTagsRaw) {
-            // Split by comma, trim whitespace, filter out empty strings
-            tagsArray = commonTagsRaw.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
-        }
-        // Convert the JavaScript array to a JSON string
-        const tagsJsonString = JSON.stringify(tagsArray); 
-        console.log('Frontend preparing tags (JSON stringified):', tagsJsonString); // For debugging
-
 
         let completedFiles = 0;
         let totalFiles = this.filesToUpload.length;
-
-        // Reset overall progress at the start of a new batch
-        this.updateOverallProgress(0, totalFiles); 
-
 
         for (const file of this.filesToUpload) {
             const fileId = Object.keys(this.jobStatus).find(key => this.jobStatus[key].file === file);
@@ -198,7 +172,7 @@ class UploadInterface {
                 const formData = new FormData();
                 formData.append('pdf_file', file);
                 formData.append('markdown_content', markdownContent);
-                formData.append('tags', tagsJsonString); // Append the JSON stringified tags
+                formData.append('tags', commonTags);
                 formData.append('title', commonTitle || file.name.split('.').slice(0, -1).join('.')); // Use file name if no common title
 
                 const response = await fetch('/api/documents', {
@@ -207,12 +181,11 @@ class UploadInterface {
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || `HTTP error! Status: ${response.status}`);
+                    throw new Error(`HTTP error! Status: ${response.status}`);
                 }
 
                 const result = await response.json();
-                statusSpan.textContent = `Uploaded! ID: ${result.document.id}`; // Corrected to result.document.id
+                statusSpan.textContent = `Uploaded! ID: ${result.document_id}`;
                 statusSpan.style.color = 'var(--success-color)';
                 progressBar.value = 100;
                 completedFiles++;
@@ -222,27 +195,15 @@ class UploadInterface {
                 statusSpan.textContent = `Failed: ${error.message}`;
                 statusSpan.style.color = 'var(--danger-color)';
                 progressBar.value = 0;
-                // Do not increment completedFiles on failure if you want progress to reflect only successful ones
             } finally {
-                // Update overall progress based on the total number of files attempted,
-                // and the number successfully processed.
-                // It's often better to track completed vs total, but here we increment per file
-                // and update based on that count.
                 this.updateOverallProgress(completedFiles, totalFiles);
             }
         }
 
-        // Final message after all files have been processed
-        // Use a timeout to ensure progress bar finishes visually before alert/reset
-        setTimeout(() => {
-            alert('All file operations completed. Check individual file statuses for details.');
-            this.filesToUpload = []; // Clear queue after processing attempt
-            this.jobStatus = {}; // Reset job status
-            this.uploadQueue.innerHTML = ''; // Clear display
-            this.updateUploadButtonState(); // Update button text to reflect empty queue
-            this.formTagsInput.value = ''; // Clear tags input
-            this.formTitleInput.value = ''; // Clear title input
-        }, 500); // Small delay
+        alert('All files processed. Check status for details.');
+        this.filesToUpload = []; // Clear queue after processing attempt
+        this.jobStatus = {}; // Reset job status
+        this.updateUploadButtonState(); // Update button text to reflect empty queue
     }
 
     updateFileProgress({ jobId, progress, status }) {
@@ -257,11 +218,11 @@ class UploadInterface {
     }
 
     handleFileComplete({ jobId, markdownContent }) {
-        // This method is primarily for handling the *conversion* completion from PDF2MDProcessor.
-        // The actual upload happens in `startProcessingAndUpload` after this.
-        console.log(`Conversion job ${jobId} completed.`);
-        // You could use this to update a temporary status for the file item
-        // e.g., this.jobStatus[jobId].element.querySelector('.file-status').textContent = 'Conversion Complete';
+        // This event might be less critical now, as the upload happens after conversion.
+        // The `startProcessingAndUpload` method handles the full flow.
+        // You could update a specific UI element here if needed, but progress updates
+        // are more granular.
+        console.log(`Job ${jobId} completed. Markdown length: ${markdownContent.length}`);
     }
 
     handleFileError({ jobId, error }) {
@@ -271,12 +232,12 @@ class UploadInterface {
             const progressBar = itemElement.querySelector('.file-progress');
 
             if (statusSpan) {
-                statusSpan.textContent = `Conversion Error: ${error.message || 'Unknown error'}`;
+                statusSpan.textContent = `Error: ${error.message || 'Unknown error'}`;
                 statusSpan.style.color = 'var(--danger-color)';
             }
             if (progressBar) progressBar.value = 0;
         }
-        console.error(`Error in conversion job ${jobId}:`, error);
+        console.error(`Error in job ${jobId}:`, error);
     }
 
     updateOverallProgress(completed, total) {
@@ -285,9 +246,10 @@ class UploadInterface {
         this.overallProgressText.textContent = `${percent}% (${completed}/${total} files)`;
 
         if (completed === total && total > 0) {
-            this.overallProgressText.textContent = `All operations completed!`;
+            this.overallProgressText.textContent = `All uploads completed!`;
             this.overallProgressBar.style.backgroundColor = 'var(--success-color)';
-            // Consider if you want to visually clear the queue here or keep statuses
+            // Optionally, clear the queue or redirect after all uploads
+            // setTimeout(() => { this.uploadQueue.innerHTML = '<p class="queue-placeholder">Uploads finished. Select new files.</p>'; }, 3000);
         }
     }
 }
