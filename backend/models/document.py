@@ -9,6 +9,7 @@ class Document(db.Model):
     __tablename__ = 'documents'
 
     id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
     filename = db.Column(db.String(255), nullable=False)
     file_path = db.Column(db.String(500), nullable=False) # Path where the file is stored
     upload_date = db.Column(db.DateTime, default=datetime.utcnow)
