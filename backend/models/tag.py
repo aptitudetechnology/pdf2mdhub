@@ -11,7 +11,7 @@ class Tag(db.Model):
 
     documents = db.relationship(
         'Document',
-        secondary=document_tags, # <<< CHANGE THIS: Use the actual Python object
+        secondary=document_tags,
         back_populates='tags'
     )
 
