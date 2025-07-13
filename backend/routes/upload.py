@@ -13,7 +13,7 @@ upload_bp = Blueprint('upload', __name__)
 @upload_bp.route('/api/documents', methods=['POST'])
 def upload_document():
     # 1. Handle file upload - accept 'file' as sent by frontend.
-    file = request.files.get('file') # <--- CORRECTED: Changed from 'pdf_file' to 'file'
+    file = request.files.get('file') # <--- CORRECTED: Changed from 'pdf_file' to 'file'.
     if not file: # Add check for missing file
         return jsonify({"error": "No file part in the request"}), 400
 
