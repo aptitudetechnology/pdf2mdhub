@@ -3,7 +3,7 @@ import io
 import json
 
 # Define UPLOAD_URL globally
-UPLOAD_URL = "http://127.0.0.1/upload"  # Replace with your actual URL
+UPLOAD_URL = "http://127.0.0.1:5050/upload"  # Replace with your actual URL
 
 # Download the PDF file and store it as DUMMY_PDF_CONTENT
 def download_test_pdf():
