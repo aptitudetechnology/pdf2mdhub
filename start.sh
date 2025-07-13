@@ -26,10 +26,10 @@ mkdir -p uploads
 mkdir -p instance
 
 # --- Database Migration Step ---
-echo "Applying database migrations..."
+# echo "Applying database migrations..."
 # Ensure you are in the directory where FLASK_APP can be found, typically 'backend'
 # This assumes your `app.py` sets up the `db` object correctly for Flask-Migrate
-python -m flask db upgrade
+#python -m flask db upgrade
 
 echo "Starting Flask server..."
 # Run Flask server
