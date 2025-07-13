@@ -1,78 +1,86 @@
 # test_upload_api.py
-import pytest
+import sys
+print("Python sys.path:", sys.path) # DEBUG: Prints Python's module search path
+
+# The import below is the one causing the error. We keep it to see sys.path before it fails.
 from backend.app import create_app # Adjust this import if your app is elsewhere
-import io
+
+import requests
 import json
-from flask import url_for # Import url_for for robust URL generation
+import io
+import os
+import time # For slight delays if needed
 
-@pytest.fixture
-def client():
-    app = create_app()
-    app.config['TESTING'] = True
-    # If your app needs a real DB for tests, you'd configure it here
-    # app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
-    # with app.app_context():
-    #    db.create_all() # Or run migrations
+# --- Configuration ---
+UPLOAD_URL = "http://127.0.0.1:5050/api/documents" # This matches your upload_bp.route
 
-    with app.test_client() as client:
-        # Push an application context if your test needs to access current_app or url_for directly
-        with app.app_context():
-            yield client
-        # with app.app_context():
-        #    db.drop_all() # Cleanup if you created tables
+# A simple dummy PDF content for testing.
+# This isn't a valid PDF, but it simulates a binary file for the upload process.
+# The content itself won't be processed as a PDF by the backend unless you have a real PDF parser.
+# For now, it just needs to be a byte stream.
+DUMMY_PDF_CONTENT = b"This is a test PDF document for upload. It contains some text that might be indexed later."
+DUMMY_PDF_FILENAME = "test_document.pdf"
 
-def test_document_upload_success(client):
-    # Prepare a dummy file
-    dummy_pdf_content = b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Count 0>>endobj\nxref\n0 3\n0000000000 65535 f\n0000000009 00000 n\n0000000074 00000 n\ntrailer<</Size 3/Root 1 0 R>>startxref\n104\n%%EOF"
-    file_data = (io.BytesIO(dummy_pdf_content), 'my_test_document.pdf')
+# --- Test Helper Function ---
+def run_upload_test(test_name, filename, file_content, metadata=None, tags=None, expected_status=201, expected_message_substring=None, check_document_data=None):
+    """
+    Runs a single API upload test and asserts its outcome.
 
-    # Prepare metadata and tags
-    document_metadata = {
-        'title': 'Automated Test Document',
-        'author': 'Test Suite',
-        'year': 2024
-    }
-    tags = ['test-tag-1', 'api-upload-test']
+    Args:
+        test_name (str): A descriptive name for the test.
+        filename (str): The name of the file to send.
+        file_content (bytes): The binary content of the file.
+        metadata (dict, optional): Dictionary for document_metadata.
+        tags (list, optional): List of strings for tags.
+        expected_status (int): The expected HTTP status code (default: 201 Created).
+        expected_message_substring (str, optional): A substring expected in the 'message' field of the response.
+        check_document_data (dict, optional): A dictionary of key-value pairs to check in the 'document' object.
+    """
+    print(f"\n===== Running Upload Test: {test_name} =====")
+    print(f"Uploading to URL: {UPLOAD_URL}")
 
-    # Use the correct endpoint and method
-    # According to app.url_map, the upload endpoint is '/api/upload' and the internal endpoint name is 'upload_file'
-    # Using url_for with the blueprint and endpoint name is best practice
-    # If upload_file is NOT part of a blueprint, use just 'upload_file'
-    # If it IS part of the 'upload' blueprint, it would be 'upload.upload_file'
-    # Your `upload.py` uses `upload_bp = Blueprint('upload', __name__)` so it's likely 'upload.upload_file'
-    # However, your url_map output just says `upload_file`. This implies it's a root-level route,
-    # or the blueprint registration is not prefixing the endpoint names.
-    # Let's assume `upload_file` for now, but be aware of `upload.upload_file` as an alternative.
-    # Based on your url_map, it appears upload_file is the direct endpoint name.
-    
-    # We use the literal string '/api/upload' for certainty, but url_for('upload_file') is preferred
-    # if the app structure properly resolves it.
-    upload_url = '/api/upload' # Or url_for('upload_file') if that works reliably
+    # Prepare the file for requests
+    files = {'file': (filename, io.BytesIO(file_content), 'application/pdf')}
 
-    response = client.post(
-        upload_url,
-        data={
-            'file': file_data,
-            'document_metadata': json.dumps(document_metadata),
-            'tags': json.dumps(tags) # Ensure tags are also a JSON string
-        },
-        content_type='multipart/form-data'
-    )
+    # Prepare form data
+    data = {}
+    if metadata is not None:
+        data['document_metadata'] = json.dumps(metadata)
+    if tags is not None:
+        data['tags'] = json.dumps(tags)
 
-    # Assertions
-    assert response.status_code == 201
-    response_data = response.json
-    assert response_data['message'] == "File uploaded successfully. Processing for search indexing in background."
-    assert 'document' in response_data
-    assert response_data['document']['title'] == 'Automated Test Document'
-    assert response_data['document']['filename'] == 'my_test_document.pdf'
-    # Add more assertions to check tags, file path (if returned), status, etc.
-    assert 'tags' in response_data['document']
-    assert len(response_data['document']['tags']) == 2
-    assert 'test-tag-1' in [t['name'] for t in response_data['document']['tags']]
+    try:
+        response = requests.post(UPLOAD_URL, files=files, data=data)
+        response_data = {}
+        try:
+            response_data = response.json()
+        except json.JSONDecodeError:
+            print(f"Test '{test_name}' FAILED: Could not decode JSON from response. Response content: {response.text}")
+            print(f"Status Code: {response.status_code}")
+            assert False, "JSON Decode Error"
 
-# Add more tests:
-# - test_upload_no_file()
-# - test_upload_invalid_metadata_json()
-# - test_upload_invalid_tags_json()
-# - test_upload_large_file() (if you have size limits)
+        print(f"\n--- API Response (Status: {response.status_code}) ---")
+        print(json.dumps(response_data, indent=2))
+        print("--------------------------------------")
+
+        # Assertion 1: Check HTTP status code
+        assert response.status_code == expected_status, \
+            f"Test '{test_name}' FAILED: Expected status {expected_status}, got {response.status_code}. Response: {response.text}"
+
+        # Assertion 2: Check message substring
+        if expected_message_substring:
+            actual_message = response_data.get('message', '')
+            assert expected_message_substring in actual_message, \
+                f"Test '{test_name}' FAILED: Expected message to contain '{expected_message_substring}', got '{actual_message}'"
+
+        # Assertion 3: Check returned document data if status is success
+        if expected_status >= 200 and expected_status < 300 and check_document_data:
+            returned_document = response_data.get('document', {})
+            assert returned_document, f"Test '{test_name}' FAILED: No 'document' object in successful response."
+            for key, expected_value in check_document_data.items():
+                actual_value = returned_document.get(key)
+                if key == 'tags': # Special handling for tags, order might differ
+                    actual_value_set = set(actual_value) if actual_value else set()
+                    expected_value_set = set(expected_value) if expected_value else set()
+                    assert actual_value_set == expected_value_set, \
+                        f"Test '{test_name}' FAILED: Document '{key}' mismatch.
