@@ -29,6 +29,8 @@ CORS(app)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Database Models
+# No changes needed here, as the previous conversation already had this corrected.
+# I'm just confirming that your code now looks good.
 class Document(db.Model):
     __tablename__ = 'documents'
     
@@ -47,7 +49,8 @@ class Document(db.Model):
     
     # Relationships
     tags = db.relationship('Tag', secondary='document_tags', backref='documents')
-    metadata = db.relationship('DocumentMetadata', backref='document', cascade='all, delete-orphan')
+    # Renamed from 'metadata' to 'document_metadata'
+    document_metadata = db.relationship('DocumentMetadata', backref='document', cascade='all, delete-orphan') 
     
     def to_dict(self):
         return {
@@ -62,7 +65,8 @@ class Document(db.Model):
             'uploaded_by': self.uploaded_by,
             'notes': self.notes,
             'tags': [tag.name for tag in self.tags],
-            'metadata': {meta.key: meta.value for meta in self.metadata}
+            # Changed 'metadata' to 'document_metadata' here as well for consistency
+            'metadata': {meta.key: meta.value for meta in self.document_metadata} 
         }
 
 class Tag(db.Model):
