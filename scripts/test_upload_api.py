@@ -2,6 +2,9 @@ import requests
 import io
 import json
 
+# Define UPLOAD_URL globally
+UPLOAD_URL = "http://127.0.0.1/upload"  # Replace with your actual URL
+
 # Download the PDF file and store it as DUMMY_PDF_CONTENT
 def download_test_pdf():
     """Download the test PDF file and return its content as bytes."""
@@ -53,7 +56,7 @@ def run_upload_test(
         check_document_data (dict, optional): A dictionary of key-value pairs to check in the 'document' object.
     """
     print(f"\n===== Running Upload Test: {test_name} =====")
-    print(f"Uploading to URL: {UPLOAD_URL}")
+    print(f"Uploading to URL: {UPLOAD_URL}") # UPLOAD_URL is now accessible here
 
     # Prepare the file for requests
     files = {"file": (filename, io.BytesIO(file_content), "application/pdf")}
@@ -130,9 +133,6 @@ def run_upload_test(
         print(f"Test '{test_name}' FAILED: {e}")
     except Exception as e:
         print(f"Test '{test_name}' FAILED: An unexpected error occurred - {e}")
-
-        # Make sure you have UPLOAD_URL defined somewhere in your script
-        UPLOAD_URL = "http://127.0.0.1/upload"  # Replace with your actual URL
 
 
 # Your test case
