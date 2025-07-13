@@ -32,7 +32,20 @@ def upload_document():
             return jsonify({"error": "Invalid JSON for document_metadata"}), 400
         
         # 3. Handle tags from request
-        tag_names = request.form.getlist('tags') # Assumes tags are sent as multiple 'tags' fields
+        raw_tags = request.form.get('tags') # Get the single 'tags' field value
+        tag_names = []
+        if raw_tags:
+            try:
+                parsed_tags = json.loads(raw_tags)
+                if isinstance(parsed_tags, list):
+                    tag_names = parsed_tags
+                else:
+                    current_app.logger.warning("Tags JSON was not a list, treating as single tag string.")
+                    tag_names = [raw_tags] # Fallback, treat as a single literal tag if not a list
+            except json.JSONDecodeError:
+                current_app.logger.warning("Invalid JSON for tags, treating as literal tag string.")
+                tag_names = [raw_tags] # Fallback, treat as a single literal tag string
+
         tags = []
         for tag_name in tag_names:
             tag_name = tag_name.strip().lower() # Normalize tags
