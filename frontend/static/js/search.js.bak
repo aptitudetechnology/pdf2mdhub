@@ -16,8 +16,7 @@ class SearchInterface {
 
         this.currentPage = 1;
         this.totalPages = 1;
-        // The backend's 'per_page' is 20 by default, let's use that as frontend default too
-        this.resultsPerPage = 20;
+        this.resultsPerPage = 10; // Assuming a default, can be fetched from backend if API supports
 
         this.setupSearch();
         this.loadSearchResults(); // Initial load when page loads
@@ -70,8 +69,7 @@ class SearchInterface {
 
     async loadSearchResults() {
         const query = this.searchInput.value.trim();
-        // Ensure tags are comma-separated for the backend
-        const tags = this.tagFilter.value.split(',').map(tag => tag.trim()).filter(tag => tag !== '').join(',');
+        const tags = this.tagFilter.value;
         const dateFrom = this.dateFromInput.value;
         const dateTo = this.dateToInput.value;
 
@@ -91,12 +89,10 @@ class SearchInterface {
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
-            const data = await response.json(); // Data now structured with 'results' and 'pagination'
+            const data = await response.json(); // Expecting { documents: [], total_pages: 1, current_page: 1 }
 
-            // --- IMPORTANT CHANGE HERE ---
-            this.renderResults(data.results); // Use data.results instead of data.documents
-            // Access pagination details from the 'pagination' object
-            this.updatePagination(data.pagination.page, data.pagination.pages);
+            this.renderResults(data.documents);
+            this.updatePagination(data.current_page, data.total_pages);
 
         } catch (error) {
             console.error('Error fetching search results:', error);
@@ -116,10 +112,10 @@ class SearchInterface {
                         <img src="${doc.thumbnail_url || '/static/images/default_pdf_thumbnail.png'}" alt="Document Thumbnail">
                     </div>
                     <div class="card-content">
-                        <h4 class="card-title">${doc.title || doc.original_name || 'Untitled Document'}</h4>
+                        <h4 class="card-title">${doc.title}</h4>
                         <p class="card-summary">${doc.summary || 'No summary available.'}</p>
                         <div class="card-tags">
-                            ${doc.tags && doc.tags.length > 0 ? doc.tags.map(tag => `<span class="tag">${tag.trim()}</span>`).join('') : '<span class="tag no-tag">No Tags</span>'}
+                            ${doc.tags ? doc.tags.split(',').map(tag => `<span class="tag">${tag.trim()}</span>`).join('') : '<span class="tag no-tag">No Tags</span>'}
                         </div>
                         <a href="/documents/${doc.id}" class="card-link">View Document</a>
                     </div>
