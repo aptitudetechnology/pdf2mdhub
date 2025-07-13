@@ -236,3 +236,65 @@ from backend.models.document import Document
 from backend.models.tag import Tag
 
 This aligns with your current __init__.py strategy — only exporting db to prevent circular dependencies.
+
+This SQLAlchemy error indicates there's a circular or incorrect relationship configuration in your Document model. The error message shows that there's a problem with the tags relationship where it's trying to reference itself incorrectly.
+Here's how to fix this issue:
+The Problem
+The error suggests that in your Document model, there's a relationship called tags that has a back_populates or backref configuration that's pointing to itself or to a non-existent relationship.
+Common Causes and Solutions
+1. Incorrect back_populates configuration
+If you have a many-to-many relationship between Document and Tag, check your model definitions:
+
+# Correct way for many-to-many relationship
+class Document(db.Model):
+    __tablename__ = 'documents'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    # ... other columns
+    
+    # Many-to-many relationship with Tag
+    tags = db.relationship('Tag', secondary='document_tags', back_populates='documents')
+
+class Tag(db.Model):
+    __tablename__ = 'tags'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    # ... other columns
+    
+    # Many-to-many relationship with Document
+    documents = db.relationship('Document', secondary='document_tags', back_populates='tags')
+
+# Association table for many-to-many
+document_tags = db.Table('document_tags',
+    db.Column('document_id', db.Integer, db.ForeignKey('documents.id'), primary_key=True),
+    db.Column('tag_id', db.Integer, db.ForeignKey('tags.id'), primary_key=True)
+)
+
+2. Check for typos in relationship names
+Make sure the relationship names match exactly:
+
+If Document.tags exists, then Tag.documents should back_populates='tags'
+If Tag.documents exists, then Document.tags should back_populates='documents'
+
+class Document(db.Model):
+    __tablename__ = 'documents'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    # ... other columns
+    
+    tags = db.relationship('Tag', secondary='document_tags', backref='documents')
+
+class Tag(db.Model):
+    __tablename__ = 'tags'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    # ... other columns
+    # No need to define documents relationship when using backref
+
+    Debugging Steps
+
+Check your model definitions - Look at both your Document and Tag models
+Verify relationship names - Ensure they match exactly in back_populates
+Check for duplicate relationships - Make sure you don't have conflicting relationship definitions
+Restart your application - After making changes, restart your Flask app
+
