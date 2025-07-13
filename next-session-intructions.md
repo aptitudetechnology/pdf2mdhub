@@ -194,7 +194,7 @@ Ensure your `app.py` includes:
 ## 5. Deployment Considerations
 
 ### Frontend Assets
-- Minify JavaScript and CSS
+- Minify JavaScript and CSS 
 - Optimize images
 - Enable gzip compression
 - Set up CDN for static assets
