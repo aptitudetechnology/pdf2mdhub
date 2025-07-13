@@ -30,9 +30,6 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB limit
 # Ensure upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Initialize extensions
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
 
 
 # Initialize extensions
