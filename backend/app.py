@@ -109,6 +109,7 @@ def register_routes(app):
                     title=title,
                     filename=final_filename,
                     filepath=pdf_path,
+                    file_path=pdf_path,
                     status='uploaded'
                 )
 
