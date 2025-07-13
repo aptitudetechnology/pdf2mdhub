@@ -608,10 +608,19 @@ def upload_page():
     logger.info("--- Serving upload page (upload.html) ---")
     return render_template('upload.html')
 
-@app.route('/documents/<int:document_id>') # Changed from /viewer/<int:document_id> for consistency with link in search.js
-def view_document_page(document_id): # Renamed to better reflect direct document viewing
+@app.route('/documents/<int:document_id>')
+def view_document_page(document_id):
     logger.info(f"--- Serving document view page (viewer.html) for document ID: {document_id} ---")
-    return render_template('viewer.html', document_id=document_id)
+    try:
+        # Fetch the document from the database
+        document = Document.query.get_or_404(document_id)
+        # Pass the entire document object to the template
+        return render_template('viewer.html', document=document)
+    except Exception as e:
+        logger.error(f"Error fetching document {document_id} for viewer page: {e}")
+        # Optionally, render an error page or redirect
+        return render_template('error.html', message=f"Document not found or inaccessible: {document_id}"), 404
+
 
 # The single and correct entry point for running the app and creating tables
 if __name__ == '__main__':
