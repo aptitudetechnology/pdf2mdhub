@@ -1,25 +1,37 @@
 <aside id="metadata-sidebar" class="metadata-sidebar">
-    <h3>Document Details</h3>
-    <ul class="metadata-list">
-        <li><strong>Title:</strong> {{ document.title }}</li>
-        <li><strong>Filename:</strong> {{ document.original_name }}</li>
-        <li><strong>Size:</strong> {{ (document.file_size / 1024 / 1024)|round(2) }} MB</li>
-        <li><strong>Uploaded:</strong> {{ document.upload_date.strftime('%Y-%m-%d %H:%M') }}</li>
-        <li><strong>Status:</strong> <span class="status-{{ document.status | lower }}">{{ document.status }}</span></li>
-        <li><strong>Tags:</strong>
-            <div class="metadata-tags">
-                {% if document.tags %}
-                   {% for tag in document.tags %}
-                       <span class="tag">{{ tag.name.strip() }}</span>
-                    {% endfor %}
-                {% else %}
-                    <span class="tag no-tag">None</span>
-                {% endif %}
-            </div>
-        </li>
-        {% if document.notes %}
-        <li><strong>Notes:</strong> <p class="metadata-notes">{{ document.notes }}</p></li>
-        {% endif %}
-        </ul>
-    <button class="edit-metadata-btn">Edit Metadata</button>
+ <h3>Document Details</h3>
+<ul class="metadata-list">
+<li><strong>Title:</strong> {{ document.title or 'Unknown' }}</li>
+<li><strong>Filename:</strong> {{ document.original_name or 'Unknown' }}</li>
+<li><strong>Size:</strong> 
+{% if document.file_size %}
+  {{ (document.file_size / 1024 / 1024)|round(2) }} MB
+{% else %}
+  Unknown
+{% endif %}
+</li>
+<li><strong>Uploaded:</strong> 
+{% if document.upload_date %}
+  {{ document.upload_date.strftime('%Y-%m-%d %H:%M') }}
+{% else %}
+  Unknown
+{% endif %}
+</li>
+<li><strong>Status:</strong> <span class="status-{{ (document.status | lower) if document.status else 'unknown' }}">{{ document.status or 'Unknown' }}</span></li>
+<li><strong>Tags:</strong>
+<div class="metadata-tags">
+ {% if document.tags %}
+ {% for tag in document.tags %}
+<span class="tag">{{ tag.name.strip() if tag.name else tag }}</span>
+ {% endfor %}
+ {% else %}
+<span class="tag no-tag">None</span>
+ {% endif %}
+</div>
+</li>
+ {% if document.notes %}
+<li><strong>Notes:</strong> <p class="metadata-notes">{{ document.notes }}</p></li>
+ {% endif %}
+</ul>
+<button class="edit-metadata-btn">Edit Metadata</button>
 </aside>
