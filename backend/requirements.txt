@@ -11,3 +11,4 @@ markdown
 python-magic
 Flask-Migrate
 alembic
+pytest
