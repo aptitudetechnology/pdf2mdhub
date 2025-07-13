@@ -1,6 +1,7 @@
 # backend/models/document.py
 from datetime import datetime
-from backend.database import db  # Import from dedicated database module
+#from backend.database import db  # Import from dedicated database module
+from backend.models import db 
 from sqlalchemy.orm.exc import DetachedInstanceError
 import json
 
