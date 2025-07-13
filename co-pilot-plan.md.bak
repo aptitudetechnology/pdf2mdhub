@@ -2,46 +2,7 @@
 
 ## Phase 0: Foundation & Validation
 
-### Infrastructure Setup
-- **Create project Makefile** with commands for:
-  - Environment setup (`make setup`)
-  - Development server startup (`make dev`)
-  - Testing (`make test`)
-  - Docker builds (`make build`)
-  - Cleanup (`make clean`)
-  - Database operations (`make db-init`, `make db-migrate`)
-
-### Docker Infrastructure
-- **Create Dockerfile** for the Flask application with:
-  - Multi-stage build for production optimization
-  - Python dependencies installation
-  - Static file serving configuration
-  - Non-root user setup for security
-  - Health check endpoints
-
-- **Create docker-compose.yml** with services for:
-  - **pdf2md-app**: Main Flask application
-  - **redis**: Redis cache service for session storage and task queuing
-  - **nginx**: Reverse proxy for static files and load balancing (optional)
-  - **postgres**: Database service (alternative to SQLite for production)
-  - Volume mounts for persistent data
-  - Network configuration for service communication
-  - Environment variable management
-
-### Redis Integration Planning
-- **Backend Redis integration** requirements:
-  - Session storage for user state
-  - Caching for search results and metadata
-  - Task queuing for background processing
-  - Real-time progress tracking for uploads
-  - Rate limiting implementation
-
 ### Backend API Foundation
-- **Update `backend/requirements.txt`** to include:
-  - Redis client (`redis>=4.0.0`)
-  - Flask-Session for Redis session storage
-  - Celery for task queuing (optional)
-  - Flask-Caching for response caching
 - **Verify existing endpoints** in `backend/app.py`
 - **Test database schema** and model relationships
 - **Validate file storage** configuration and permissions
@@ -60,26 +21,22 @@
 - **Set up development/production** environment toggles
 - **Create debugging tools** and logging strategy
 - **Establish code quality tools** (linting, formatting)
-- **Docker development workflow** with hot-reload support
 
 ## Phase 1: Core Upload System
 
-### Backend Upload Infrastructure with Redis
-- **Redis session management** for upload progress tracking
+### Backend Upload Infrastructure
 - **File validation** (type, size, virus scanning)
 - **Storage optimization** (chunked uploads, progress tracking)
 - **Database models** for upload status and metadata
 - **API endpoints** for upload progress and status
 - **Error handling** for storage failures
-- **Redis caching** for frequently accessed file metadata
 
 ### Basic Upload Interface
 - **Create `static/js/upload.js`** with:
   - File selection and validation
   - Drag-and-drop functionality
-  - Real-time progress tracking via Redis
+  - Basic progress tracking
   - Error display and retry logic
-  - WebSocket or polling for progress updates
 - **Create `templates/upload.html`** with:
   - Clean, responsive upload interface
   - Progress bars and status indicators
@@ -91,27 +48,24 @@
 - **Create metadata extraction** for uploaded files
 - **Add file cleanup** for failed uploads
 - **Implement file size limits** and validation
-- **Redis-based rate limiting** for uploads
 
 ## Phase 2: PDF to Markdown Conversion
 
-### OpenGovSG Integration with Redis Progress Tracking
+### OpenGovSG Integration
 - **Add OpenGovSG library** to `templates/base.html` via CDN
 - **Create `static/js/pdf2md.js`** with:
   - Core conversion logic using OpenGovSG API
-  - Progress event emission to Redis
+  - Progress event emission
   - Memory management for large files
   - Error handling and retry mechanisms
   - Conversion quality validation
-  - Real-time progress updates
 
 ### Conversion Pipeline
 - **Client-side processing** workflow
-- **Redis-based progress tracking** (upload vs conversion progress)
+- **Progress tracking** (upload vs conversion progress)
 - **Result validation** and quality checks
 - **Fallback handling** for conversion failures
 - **Memory optimization** for large documents
-- **Background task queuing** for heavy processing
 
 ### Error Handling & Recovery
 - **Conversion failure detection** and reporting
@@ -119,7 +73,6 @@
 - **Manual retry options** for users
 - **Partial conversion handling** for complex PDFs
 - **User feedback** for conversion issues
-- **Redis-based error logging** and analytics
 
 ## Phase 3: Document Storage & Retrieval
 
@@ -130,21 +83,18 @@
 - **Version control** for document updates
 - **User tracking** and permissions
 
-### Document Management API with Redis Caching
+### Document Management API
 - **CRUD operations** for documents
 - **Batch operations** for multiple documents
 - **Metadata management** endpoints
 - **Search and filtering** capabilities
 - **Document versioning** support
-- **Redis caching** for document metadata and search results
-- **Cache invalidation** strategies for data consistency
 
 ### Storage Optimization
 - **File compression** for storage efficiency
 - **Thumbnail generation** for document previews
 - **Caching strategies** for frequently accessed documents
 - **Backup and recovery** procedures
-- **Redis-based session storage** for user preferences
 
 ## Phase 4: Document Viewer
 
@@ -155,7 +105,6 @@
   - Zoom and navigation controls
   - Syntax highlighting for markdown
   - Copy/export functionality
-  - Real-time collaboration features via Redis
 
 ### Viewer Interface
 - **Create `templates/viewer.html`** with:
@@ -171,23 +120,20 @@
 - **Mobile-responsive** viewing
 - **Keyboard shortcuts** for power users
 - **Accessibility features** (screen reader support)
-- **Redis-based user preferences** and view state
 
 ## Phase 5: Search & Discovery
 
-### Search Backend with Redis
+### Search Backend
 - **Full-text indexing** implementation
 - **Metadata search** capabilities
 - **Advanced filtering** options
 - **Search result ranking** and relevance
 - **Search analytics** and optimization
-- **Redis-based search result caching**
-- **Search suggestion caching** for performance
 
 ### Search Interface
 - **Create `static/js/search.js`** with:
   - Debounced search input
-  - Real-time search suggestions from Redis cache
+  - Real-time search suggestions
   - Advanced filter controls
   - Pagination and infinite scroll
   - Search history and saved searches
@@ -216,14 +162,12 @@
 - **Loading states** and skeleton screens
 - **Success/error notifications** system
 - **Keyboard navigation** support
-- **Real-time updates** via Redis pub/sub
 
 ### Performance Optimization
 - **Frontend asset optimization** (minification, compression)
 - **Lazy loading** for document lists
 - **Image optimization** for thumbnails
 - **Code splitting** for faster loading
-- **Redis-based performance monitoring**
 
 ## Phase 7: Testing & Quality Assurance
 
@@ -233,7 +177,6 @@
 - **Database model** validation
 - **PDF conversion** accuracy tests
 - **Search functionality** tests
-- **Redis integration** testing
 
 ### Integration Testing
 - **End-to-end workflows** (upload → convert → store → search)
@@ -241,7 +184,6 @@
 - **Error handling** throughout the pipeline
 - **Performance testing** with large files
 - **Concurrent user** testing
-- **Docker container** testing and orchestration
 
 ### Compatibility Testing
 - **Browser compatibility** (Chrome, Firefox, Safari, Edge)
@@ -249,17 +191,15 @@
 - **File format compatibility** testing
 - **Accessibility compliance** (WCAG guidelines)
 - **Network condition** testing (slow connections)
-- **Container deployment** testing
 
 ## Phase 8: Security & Deployment
 
 ### Security Implementation
 - **File validation** and sanitization
-- **Upload size limits** and rate limiting via Redis
+- **Upload size limits** and rate limiting
 - **CSRF protection** implementation
 - **Content Security Policy** (CSP) headers
 - **Input validation** and sanitization
-- **Redis security** (authentication, SSL/TLS)
 
 ### Deployment Preparation
 - **Environment configuration** management
@@ -267,83 +207,45 @@
 - **Static asset** optimization and CDN setup
 - **Error monitoring** and alerting
 - **Backup strategies** and disaster recovery
-- **Docker production** optimization
-- **Container orchestration** (Kubernetes/Docker Swarm)
 
 ### Production Optimization
 - **Database indexing** for search performance
-- **Redis clustering** for high availability
+- **Caching strategies** (Redis, memcached)
 - **Load balancing** considerations
 - **Monitoring and logging** setup
 - **Performance metrics** tracking
-- **Auto-scaling** configuration
-
-## Docker & Infrastructure Components
-
-### Makefile Commands
-```makefile
-# Key commands to implement:
-make setup          # Install dependencies and set up environment
-make dev            # Start development servers with hot-reload
-make build          # Build Docker containers
-make up             # Start all services with docker-compose
-make down           # Stop all services
-make test           # Run test suite
-make clean          # Clean up temporary files and containers
-make db-init        # Initialize database
-make db-migrate     # Run database migrations
-make redis-cli      # Connect to Redis CLI
-make logs           # View application logs
-```
-
-### Docker Services Architecture
-- **pdf2md-app**: Flask application with Redis integration
-- **redis**: Cache, session storage, and task queuing
-- **postgres**: Production database (with SQLite fallback)
-- **nginx**: Reverse proxy and static file serving
-- **redis-commander**: Redis GUI for development (optional)
-
-### Redis Integration Points
-- **Session Management**: User sessions and authentication state
-- **Upload Progress**: Real-time progress tracking for file uploads
-- **Caching**: API response caching and metadata storage
-- **Rate Limiting**: Upload and API request rate limiting
-- **Search Cache**: Cached search results and suggestions
-- **Task Queue**: Background processing for heavy operations
-- **Real-time Updates**: WebSocket-like functionality for live updates
 
 ## Implementation Timeline
 
 ### Week 1-2: Foundation
-- Phase 0 (Foundation & Validation + Infrastructure)
-- Phase 1 (Core Upload System + Redis Integration)
+- Phase 0 (Foundation & Validation)
+- Phase 1 (Core Upload System)
 
 ### Week 3-4: Core Features
-- Phase 2 (PDF to Markdown Conversion + Redis Progress)
-- Phase 3 (Document Storage & Retrieval + Redis Caching)
+- Phase 2 (PDF to Markdown Conversion)
+- Phase 3 (Document Storage & Retrieval)
 
 ### Week 5-6: User Interface
-- Phase 4 (Document Viewer + Redis State Management)
-- Phase 5 (Search & Discovery + Redis Search Caching)
+- Phase 4 (Document Viewer)
+- Phase 5 (Search & Discovery)
 
 ### Week 7-8: Polish & Deploy
-- Phase 6 (UI Polish & User Experience + Redis Real-time)
-- Phase 7 (Testing & Quality Assurance + Container Testing)
-- Phase 8 (Security & Deployment + Redis Production Config)
+- Phase 6 (UI Polish & User Experience)
+- Phase 7 (Testing & Quality Assurance)
+- Phase 8 (Security & Deployment)
 
 ## Success Criteria
 
 ### Technical Milestones
 - [ ] Successful PDF conversion with OpenGovSG library
-- [ ] Responsive upload interface with Redis progress tracking
+- [ ] Responsive upload interface with progress tracking
 - [ ] Functional document viewer with PDF/Markdown display
-- [ ] Fast, Redis-cached search across documents
-- [ ] Secure, scalable Docker deployment
-- [ ] Redis-based real-time updates and caching
+- [ ] Fast, accurate search across documents
+- [ ] Secure, scalable deployment
 
 ### User Experience Goals
 - [ ] Intuitive drag-and-drop upload
-- [ ] Real-time conversion feedback via Redis
+- [ ] Real-time conversion feedback
 - [ ] Fast document search and retrieval
 - [ ] Mobile-friendly interface
 - [ ] Accessible to users with disabilities
@@ -351,44 +253,32 @@ make logs           # View application logs
 ### Performance Targets
 - [ ] < 2 seconds for document upload initiation
 - [ ] < 30 seconds for typical PDF conversion
-- [ ] < 200ms for Redis-cached search queries
+- [ ] < 500ms for search queries
 - [ ] 99.9% uptime in production
-- [ ] Support for 500+ concurrent users with Redis scaling
-
-### Infrastructure Goals
-- [ ] One-command development setup (`make dev`)
-- [ ] Production-ready Docker containers
-- [ ] Redis high availability and clustering
-- [ ] Automated testing and deployment
-- [ ] Comprehensive monitoring and logging
+- [ ] Support for 100+ concurrent users
 
 ## Risk Mitigation
 
 ### Technical Risks
 - **OpenGovSG compatibility issues**: Have fallback conversion methods
 - **Browser memory limits**: Implement file size warnings and chunking
-- **Performance degradation**: Monitor and optimize database queries + Redis
+- **Performance degradation**: Monitor and optimize database queries
 - **Security vulnerabilities**: Regular security audits and updates
-- **Redis failures**: Implement Redis clustering and failover
-- **Container issues**: Comprehensive Docker testing and health checks
 
 ### Project Risks
 - **Scope creep**: Maintain focus on core MVP features
 - **Timeline delays**: Build in buffer time for testing
 - **Resource constraints**: Prioritize essential features first
 - **User adoption**: Gather feedback early and iterate
-- **Infrastructure complexity**: Start with simple Docker setup, scale gradually
 
 ## Next Steps
 
-1. **Begin Phase 0** with infrastructure setup (Makefile, Docker, Redis)
-2. **Create basic project structure** for new components
-3. **Set up development environment** with proper tooling
+1. **Begin Phase 0** with backend API validation
+2. **Set up development environment** with proper tooling
+3. **Create basic project structure** for new components
 4. **Test OpenGovSG integration** with sample PDFs
 5. **Establish testing framework** and CI/CD pipeline
-6. **Validate Redis integration** with session management
-7. **Test Docker development workflow** with hot-reload
 
 ---
 
-*This updated implementation plan provides a comprehensive approach to building a robust, scalable document management system with proper infrastructure, caching, and containerization support.*
+*This implementation plan provides a structured approach to building a robust document management system with clear milestones, success criteria, and risk mitigation strategies.*
