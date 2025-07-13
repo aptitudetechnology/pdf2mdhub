@@ -33,7 +33,7 @@ class Document(db.Model):
  # user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True) # Uncomment if User model exists
  # uploader = db.relationship('User', backref='uploaded_documents', lazy=True)
  
- # Tags relationship - using the association table defined above
+ # Tags relationship - using the association table defined above.
  tags = db.relationship('Tag', secondary=document_tags, back_populates='documents')
  
  def to_dict(self):
