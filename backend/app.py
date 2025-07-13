@@ -14,7 +14,8 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
+#app = Flask(__name__)
+app = Flask(__name__, template_folder=os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'frontend', 'templates'))
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///pdf2md.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -438,7 +439,7 @@ def list_tags():
 # Web interface routes
 @app.route('/')
 def index():
-    return render_template('documents.html')
+    return render_template('search.html')
 
 @app.route('/upload')
 def upload_page():
