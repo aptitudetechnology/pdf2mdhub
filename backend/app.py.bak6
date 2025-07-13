@@ -150,7 +150,21 @@ class DocumentMetadata(db.Model):
     key = db.Column(db.String(100), nullable=False)
     value = db.Column(db.Text)
 
-# Utility functions (consolidated)
+# Utility functions
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ['pdf']
+
+def get_or_create_tag(tag_name):
+    """Get existing tag or create new one"""
+    tag = Tag.query.filter_by(name=tag_name).first()
+    if not tag:
+        tag = Tag(name=tag_name)
+        db.session.add(tag)
+        logger.info(f"Created new tag: {tag_name}") # Log tag creation
+    return tag
+
+
+# Utility functions
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ['pdf']
 
@@ -219,7 +233,7 @@ def upload_document():
     logger.info(f"Files Data: {request.files}")
 
     try:
-        # CHANGE THIS LINE from 'file' to 'pdf_file' as per frontend upload form
+        # CHANGE THIS LINE from 'file' to 'pdf_file'
         if 'pdf_file' not in request.files:
             logger.error("Error: No 'pdf_file' part in request.files.")
             logger.info("--- END: POST /api/documents Request (400 - No file part) ---")
@@ -232,9 +246,6 @@ def upload_document():
             logger.info("--- END: POST /api/documents Request (400 - No file selected) ---")
             return jsonify({'error': 'No file selected'}), 400
         
-        if not allowed_file(file.filename):
-            logger.error(f"Error: File type not allowed for {file.filename}.")
-            return jsonify({'error': 'File type not allowed. Only PDFs are accepted.'}), 400
 
         logger.info(f"File received: {file.filename}, Content-Type: {file.content_type}")
 
@@ -243,7 +254,7 @@ def upload_document():
         filename = f"{uuid.uuid4()}_{original_name}"
         file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
 
-        # Save file temporarily (before committing DB entry)
+        # Save file
         file.save(file_path)
         logger.info(f"File saved to: {file_path}")
 
@@ -261,27 +272,14 @@ def upload_document():
             mime_type=mime_type,
             uploaded_by=request.form.get('uploaded_by', 'anonymous'),
             notes=request.form.get('notes', ''),
-            status='uploaded' # Initial status
+            status='uploaded'
         )
 
         db.session.add(document)
-        db.session.flush()  # Get the ID so we can associate tags/metadata, and reference for logging
+        db.session.flush()  # Get the ID
         logger.info(f"Document record initialized in DB (not yet committed): ID={document.id}, Original Name={document.original_name}")
 
-        # --- ADDED: PDF to Markdown Conversion ---
-        markdown_content = convert_pdf_to_markdown(file_path)
-        if markdown_content is not None:
-            document.markdown_content = markdown_content
-            document.processed_date = datetime.utcnow()
-            document.status = 'processed' # Update status to processed
-            logger.info(f"PDF converted to Markdown successfully for document ID: {document.id}. Status set to 'processed'.")
-        else:
-            document.markdown_content = "Failed to convert PDF to Markdown."
-            document.status = 'failed' # Set status to failed
-            logger.warning(f"Failed to convert PDF to Markdown for document ID: {document.id}.")
-        # --- END ADDED Conversion ---
-
-        # Handle tags (existing code)
+        # Handle tags
         tags_data = request.form.get('tags', '[]')
         logger.info(f"Received tags string: '{tags_data}'")
         try:
@@ -304,7 +302,7 @@ def upload_document():
                 document.tags.append(tag)
         logger.info(f"Tags associated with document.")
 
-        # Handle metadata (existing code)
+        # Handle metadata
         metadata_data = request.form.get('metadata', '{}')
         logger.info(f"Received metadata string: '{metadata_data}'")
         try:
@@ -342,7 +340,7 @@ def upload_document():
     except Exception as e:
         db.session.rollback()
         # Ensure cleanup of potentially saved file on error
-        if 'file_path' in locals() and os.path.exists(file_path): # file_path might not be defined if error occurs very early
+        if 'file_path' in locals() and os.path.exists(file_path):
             os.remove(file_path)
             logger.warning(f"Cleaned up partially uploaded file: {file_path}")
         logger.exception(f"Unhandled error during document upload processing.") # Logs traceback
@@ -371,3 +369,311 @@ def list_documents():
             logger.info(f"Filtering by status: {status}")
 
         if tag:
+            query = query.join(Document.tags).filter(Tag.name == tag)
+            logger.info(f"Filtering by tag: {tag}")
+
+        if search:
+            query = query.filter(
+                db.or_(
+                    Document.original_name.contains(search),
+                    Document.notes.contains(search),
+                    Document.markdown_content.contains(search)
+                )
+            )
+            logger.info(f"Filtering by search query: '{search}'")
+
+        # Order by upload date (newest first)
+        query = query.order_by(Document.upload_date.desc())
+
+        # Paginate
+        documents = query.paginate(
+            page=page,
+            per_page=per_page,
+            error_out=False
+        )
+
+        logger.info(f"Found {documents.total} documents. Returning page {page} of {documents.pages}.")
+        logger.info("--- END: GET /api/documents Request (200 - Success) ---")
+        return jsonify({
+            'documents': [doc.to_dict() for doc in documents.items],
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': documents.total,
+                'pages': documents.pages,
+                'has_next': documents.has_next,
+                'has_prev': documents.has_prev
+            }
+        })
+
+    except Exception as e:
+        logger.exception(f"Error listing documents.") # Logs traceback
+        logger.info("--- END: GET /api/documents Request (500 - Server Error) ---")
+        return jsonify({'error': 'Failed to list documents'}), 500
+
+@app.route('/api/documents/<int:document_id>', methods=['GET'])
+def get_document(document_id):
+    """Get specific document"""
+    logger.info(f"--- START: GET /api/documents/{document_id} Request ---")
+    try:
+        document = Document.query.get_or_404(document_id)
+        logger.info(f"Found document: {document.original_name} (ID: {document.id})")
+        logger.info(f"--- END: GET /api/documents/{document_id} Request (200 - Success) ---")
+        return jsonify(document.to_dict())
+    except Exception as e:
+        logger.warning(f"Document with ID {document_id} not found or error: {e}")
+        logger.info(f"--- END: GET /api/documents/{document_id} Request (404 - Not Found) ---")
+        return jsonify({'error': 'Document not found'}), 404
+
+@app.route('/api/documents/<int:document_id>', methods=['PUT'])
+def update_document(document_id):
+    """Update document metadata"""
+    logger.info(f"--- START: PUT /api/documents/{document_id} Request ---")
+    logger.info(f"Request data for update: {request.get_json()}")
+    try:
+        document = Document.query.get_or_404(document_id)
+        data = request.get_json()
+
+        logger.info(f"Updating document: {document.original_name} (ID: {document_id}) with data: {data}")
+
+        # Update basic fields
+        if 'notes' in data:
+            document.notes = data['notes']
+            logger.info(f"Updated notes to: {data['notes']}")
+        if 'status' in data:
+            document.status = data['status']
+            logger.info(f"Updated status to: {data['status']}")
+        if 'markdown_content' in data:
+            document.markdown_content = data['markdown_content']
+            document.processed_date = datetime.utcnow()
+            if document.status == 'uploaded':
+                document.status = 'processed'
+            logger.info(f"Updated markdown content and set processed_date. New status: {document.status}")
+
+
+        # Update tags
+        if 'tags' in data:
+            logger.info(f"Received tags for update: {data['tags']}")
+            # Clear existing tags
+            document.tags = []
+            logger.info("Cleared existing tags.")
+
+            # Add new tags
+            for tag_name in data['tags']:
+                if tag_name.strip():
+                    tag = get_or_create_tag(tag_name.strip())
+                    document.tags.append(tag)
+            logger.info("Added new tags.")
+
+        # Update metadata
+        if 'metadata' in data:
+            logger.info(f"Received metadata for update: {data['metadata']}")
+            # Clear existing metadata
+            DocumentMetadata.query.filter_by(document_id=document_id).delete()
+            logger.info("Cleared existing metadata.")
+
+            # Add new metadata
+            for key, value in data['metadata'].items():
+                metadata = DocumentMetadata(
+                    document_id=document_id,
+                    key=key,
+                    value=str(value)
+                )
+                db.session.add(metadata)
+            logger.info("Added new metadata.")
+
+        db.session.commit()
+
+        logger.info(f"Document updated and committed: {document.original_name} (ID: {document_id})")
+        logger.info(f"--- END: PUT /api/documents/{document_id} Request (200 - Success) ---")
+        return jsonify({
+            'message': 'Document updated successfully',
+            'document': document.to_dict()
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"Error updating document {document_id}.") # Logs traceback
+        logger.info(f"--- END: PUT /api/documents/{document_id} Request (500 - Server Error) ---")
+        return jsonify({'error': 'Failed to update document'}), 500
+
+@app.route('/api/documents/<int:document_id>', methods=['DELETE'])
+def delete_document(document_id):
+    """Delete document"""
+    logger.info(f"--- START: DELETE /api/documents/{document_id} Request ---")
+    try:
+        document = Document.query.get_or_404(document_id)
+        logger.info(f"Attempting to delete document: {document.original_name} (ID: {document.id})")
+
+        # Delete file from filesystem
+        if os.path.exists(document.file_path):
+            os.remove(document.file_path)
+            logger.info(f"Deleted file from filesystem: {document.file_path}")
+        else:
+            logger.warning(f"File not found on disk for deletion: {document.file_path}")
+
+        # Delete from database
+        db.session.delete(document)
+        db.session.commit()
+
+        logger.info(f"Document record deleted from DB: {document.original_name} (ID: {document.id})")
+        logger.info(f"--- END: DELETE /api/documents/{document_id} Request (200 - Success) ---")
+        return jsonify({'message': 'Document deleted successfully'})
+
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"Error deleting document {document_id}.") # Logs traceback
+        logger.info(f"--- END: DELETE /api/documents/{document_id} Request (500 - Server Error) ---")
+        return jsonify({'error': 'Failed to delete document'}), 500
+
+@app.route('/api/documents/<int:document_id>/markdown', methods=['GET'])
+def get_document_markdown(document_id):
+    """Get converted markdown content"""
+    logger.info(f"--- START: GET /api/documents/{document_id}/markdown Request ---")
+    try:
+        document = Document.query.get_or_404(document_id)
+
+        if not document.markdown_content:
+            logger.warning(f"Markdown content not found for document ID {document_id}.")
+            logger.info(f"--- END: GET /api/documents/{document_id}/markdown Request (404 - Not Processed) ---")
+            return jsonify({'error': 'Document not processed yet'}), 404
+
+        logger.info(f"Returning markdown for document ID {document_id}.")
+        logger.info(f"--- END: GET /api/documents/{document_id}/markdown Request (200 - Success) ---")
+        return jsonify({
+            'markdown': document.markdown_content,
+            'processed_date': document.processed_date.isoformat() if document.processed_date else None
+        })
+
+    except Exception as e:
+        logger.exception(f"Error getting markdown for document {document_id}.") # Logs traceback
+        logger.info(f"--- END: GET /api/documents/{document_id}/markdown Request (500 - Server Error) ---")
+        return jsonify({'error': 'Failed to get markdown'}), 500
+
+@app.route('/api/documents/<int:document_id>/download', methods=['GET'])
+def download_document(document_id):
+    """Download original document"""
+    logger.info(f"--- START: GET /api/documents/{document_id}/download Request ---")
+    try:
+        document = Document.query.get_or_404(document_id)
+        logger.info(f"Attempting to download file: {document.original_name} from {document.file_path}")
+
+        if not os.path.exists(document.file_path):
+            logger.warning(f"File not found on disk for download: {document.file_path}")
+            logger.info(f"--- END: GET /api/documents/{document_id}/download Request (404 - File Not Found) ---")
+            return jsonify({'error': 'File not found'}), 404
+
+        logger.info(f"Serving file for download: {document.original_name}")
+        logger.info(f"--- END: GET /api/documents/{document_id}/download Request (200 - Success) ---")
+        return send_file(
+            document.file_path,
+            as_attachment=True,
+            download_name=document.original_name
+        )
+
+    except Exception as e:
+        logger.exception(f"Error downloading document {document_id}.") # Logs traceback
+        logger.info(f"--- END: GET /api/documents/{document_id}/download Request (500 - Server Error) ---")
+        return jsonify({'error': 'Failed to download document'}), 500
+
+@app.route('/api/search', methods=['GET'])
+def search_documents():
+    """Search documents"""
+    logger.info("--- START: GET /api/search Request ---")
+    try:
+        query_str = request.args.get('q', '')
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+
+        logger.info(f"Search params: query='{query_str}', page={page}, per_page={per_page}")
+
+        # If no query is provided, return all documents (paginated)
+        if not query_str:
+            base_query = Document.query
+            logger.info("No search query provided, listing all documents.")
+        else:
+            # Search in multiple fields if a query is provided
+            base_query = Document.query.filter(
+                db.or_(
+                    Document.original_name.contains(query_str),
+                    Document.notes.contains(query_str),
+                    Document.markdown_content.contains(query_str)
+                )
+            )
+            logger.info(f"Searching for documents matching '{query_str}'.")
+
+        # Order by upload date (newest first)
+        search_query = base_query.order_by(Document.upload_date.desc())
+
+        # Paginate results
+        results = search_query.paginate(
+            page=page,
+            per_page=per_page,
+            error_out=False
+        )
+
+        logger.info(f"Found {results.total} search results. Returning page {page} of {results.pages}.")
+        logger.info("--- END: GET /api/search Request (200 - Success) ---")
+        return jsonify({
+            'query': query_str,
+            'results': [doc.to_dict() for doc in results.items],
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': results.total,
+                'pages': results.pages,
+                'has_next': results.has_next,
+                'has_prev': results.has_prev
+            }
+        })
+
+    except Exception as e:
+        logger.exception(f"Error searching documents.") # Logs traceback
+        logger.info("--- END: GET /api/search Request (500 - Server Error) ---")
+        return jsonify({'error': 'Search failed'}), 500
+
+@app.route('/api/tags', methods=['GET'])
+def list_tags():
+    """List all tags"""
+    logger.info("--- START: GET /api/tags Request ---")
+    try:
+        tags = Tag.query.all()
+        logger.info(f"Returning {len(tags)} tags.")
+        logger.info("--- END: GET /api/tags Request (200 - Success) ---")
+        return jsonify([tag.to_dict() for tag in tags])
+    except Exception as e:
+        logger.exception(f"Error listing tags.") # Logs traceback
+        logger.info("--- END: GET /api/tags Request (500 - Server Error) ---")
+        return jsonify({'error': 'Failed to list tags'}), 500
+
+# Web interface routes
+@app.route('/')
+def index():
+    logger.info("--- Serving index page (search.html) ---")
+    return render_template('search.html')
+
+@app.route('/upload')
+def upload_page():
+    logger.info("--- Serving upload page (upload.html) ---")
+    return render_template('upload.html')
+
+@app.route('/documents/<int:document_id>')
+def view_document_page(document_id):
+    logger.info(f"--- Serving document view page (viewer.html) for document ID: {document_id} ---")
+    try:
+        # Fetch the document from the database
+        document = Document.query.get_or_404(document_id)
+        # Pass the entire document object to the template
+        return render_template('viewer.html', document=document)
+    except Exception as e:
+        logger.error(f"Error fetching document {document_id} for viewer page: {e}")
+        # Optionally, render an error page or redirect
+        return render_template('error.html', message=f"Document not found or inaccessible: {document_id}"), 404
+
+
+# The single and correct entry point for running the app and creating tables
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()  # This ensures tables are created when you run app.py directly
+        logger.info("Database tables ensured.")
+    app.run(debug=True, host='0.0.0.0', port=5050)
