@@ -13,7 +13,7 @@ print(f"--- DEBUG: Loading upload.py from: {__file__} ---") # DEBUG: Prints file
 
 upload_bp = Blueprint('upload', __name__)
 
-@upload_bp.route('/api/documents', methods=['POST'])
+@upload_bp.route('/api/upload', methods=['POST'])
 def upload_document():
     # 1. Handle file upload - accept 'file' as sent by frontend
     file = request.files.get('file') # CORRECTED: Changed from 'pdf_file' to 'file'
@@ -111,7 +111,7 @@ def upload_document():
         db.session.add(new_document)
         db.session.commit()
 
-        # 5. Trigger asynchronous text extraction and indexing.
+        # 5. Trigger asynchronous text extraction and indexing
         threading.Thread(target=update_document_search_index,
                         args=(new_document.id, current_app._get_current_object())).start()
 
