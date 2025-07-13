@@ -25,8 +25,16 @@ def upload_document():
         return jsonify({"error": error}), 400
 
     try:
+        # === ENHANCED DEBUGGING SECTION ===
+        print(f"--- DEBUG: Raw request.form: {dict(request.form)} ---")
+        print(f"--- DEBUG: Raw request.files: {dict(request.files)} ---")
+        print(f"--- DEBUG: File object: {file} ---")
+        print(f"--- DEBUG: File.filename: {file.filename} ---")
+        
         # 2. Extract metadata from request.form
         uploaded_metadata = request.form.get('document_metadata')
+        print(f"--- DEBUG: Raw uploaded_metadata: {uploaded_metadata} ---")
+        
         try:
             metadata_dict = json.loads(uploaded_metadata) if uploaded_metadata else {}
         except json.JSONDecodeError:
@@ -34,13 +42,30 @@ def upload_document():
                 os.remove(filepath)
             return jsonify({"error": "Invalid JSON for document_metadata"}), 400
 
+        print(f"--- DEBUG: Parsed metadata_dict: {metadata_dict} ---")
+
         # Extract title from metadata or default to filename (REQUIRED for nullable=False)
-        #document_title = metadata_dict.get('title', file.filename.rsplit('.', 1)[0])
+        form_title = request.form.get('title')
+        metadata_title = metadata_dict.get('title')
+        filename_title = file.filename.rsplit('.', 1)[0] if file.filename else None
+        
+        print(f"--- DEBUG: form_title: '{form_title}' (type: {type(form_title)}) ---")
+        print(f"--- DEBUG: metadata_title: '{metadata_title}' (type: {type(metadata_title)}) ---")
+        print(f"--- DEBUG: filename_title: '{filename_title}' (type: {type(filename_title)}) ---")
+        
         # NEW - check form field first, then metadata, then filename
-        document_title = request.form.get('title') or metadata_dict.get('title') or file.filename.rsplit('.', 1)[0]
+        document_title = form_title or metadata_title or filename_title
+        print(f"--- DEBUG: Final document_title: '{document_title}' (type: {type(document_title)}) ---")
+        
+        # Safety check - ensure we have a valid title
+        if not document_title or document_title.strip() == '':
+            document_title = 'Untitled Document'
+            print(f"--- DEBUG: Using fallback title: '{document_title}' ---")
         
         # 3. Handle tags from request - expecting JSON string from frontend
         raw_tags = request.form.get('tags')
+        print(f"--- DEBUG: Raw tags: {raw_tags} ---")
+        
         tag_names = []
         if raw_tags:
             try:
@@ -53,6 +78,8 @@ def upload_document():
             except json.JSONDecodeError:
                 current_app.logger.warning(f"Invalid JSON for tags: {raw_tags}, treating as literal tag string.")
                 tag_names = [raw_tags]
+
+        print(f"--- DEBUG: Processed tag_names: {tag_names} ---")
 
         tags = []
         for tag_name in tag_names:
@@ -67,6 +94,7 @@ def upload_document():
         db.session.flush() # Ensure new tags get IDs before associating with document
 
         # 4. Create document record
+        print(f"--- DEBUG: About to create Document with title='{document_title}' ---")
         print(f"--- DEBUG: Instantiating Document with file_path='{filepath}' ---") # DEBUG: Print argument
         print(f"--- DEBUG: Document class loaded from: {inspect.getfile(Document)} ---") # DEBUG: Print Document class source
         print(f"--- DEBUG: 'file_path' in Document.__dict__: {'file_path' in Document.__dict__}") # DEBUG: Check for 'file_path'
