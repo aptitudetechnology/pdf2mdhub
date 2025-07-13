@@ -9,7 +9,6 @@ from datetime import datetime, timedelta
 import logging
 import subprocess
 import json
-import shutil # <--- ADDED: Import shutil for directory operations
 
 # --- Configuration ---
 # Define the absolute path to the directory where this script is located
@@ -104,16 +103,9 @@ def convert_pdf_to_markdown(pdf_path, document_id):
     # Construct paths for the conversion
     base_name = os.path.splitext(os.path.basename(pdf_path))[0] # e.g., 'e5899449c544ddc3a29b21cbbdbac31a_Invoice_'
 
-    # --- MODIFIED: pdf2md creates a folder named after the project name, and puts the .md inside it. ---
-    project_folder_path = os.path.join(app.config['MARKDOWN_FOLDER'], base_name)
-    output_md_filename_in_project_folder = f"{base_name}.md"
-    output_md_path = os.path.join(project_folder_path, output_md_filename_in_project_folder)
-
-    # --- ADDED: Clean up previous project folder before conversion (optional but recommended) ---
-    # This prevents the "Specified project folder already exists" error during subsequent conversions of the same name
-    if os.path.exists(project_folder_path):
-        logger.info(f"Removing pre-existing project folder: {project_folder_path}")
-        shutil.rmtree(project_folder_path) # Remove the directory and its contents
+    # Construct the full absolute path for the output Markdown file
+    output_md_filename = f"{base_name}.md"
+    output_md_path = os.path.join(app.config['MARKDOWN_FOLDER'], output_md_filename) # Using MARKDOWN_FOLDER
 
     logger.info(f"Executing PDF to Markdown conversion command: pdf2md {pdf_path} {base_name}")
     command = ['pdf2md', pdf_path, base_name]
@@ -126,7 +118,7 @@ def convert_pdf_to_markdown(pdf_path, document_id):
         if result.stderr:
             logger.warning(f"pdf2md stderr: {result.stderr.strip()}")
 
-        # Verify if the markdown file was created at the NEW expected path
+        # Verify if the markdown file was created
         if not os.path.exists(output_md_path):
             raise FileNotFoundError(f"Markdown file not found after conversion: {output_md_path}")
 

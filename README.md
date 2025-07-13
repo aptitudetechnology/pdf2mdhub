@@ -4,8 +4,12 @@ A lightweight document management web application with client-side PDF to Markdo
 
 ## Components
 
-1. **PDF2MD Document Management System** (`pdf2md-docs/`) - Web application
-2. **PDF2MD Plugin** (`plugins/pdf2md_plugin/`) - Business Plugin Middleware integration
+
+sudo apt install npm
+npm install pdf2md
+
+sudo apt update
+sudo apt install poppler-utils
 
 ## Quick Start
 
