@@ -23,6 +23,17 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.environ.get('UPLOAD_FOLDER', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
 
+
+#Construct the path to your 'frontend/static' directory
+static_folder_path = os.path.join(basedir, '..', 'frontend', 'static')
+
+# Initialize Flask, specifying both the custom template folder and static folder
+# Old line was: app = Flask(__name__, template_folder=template_folder_path)
+app = Flask(__name__,
+            template_folder=template_folder_path,
+            static_folder=static_folder_path) # <--- Modified line to add static_folder
+
+
 # Initialize extensions
 db = SQLAlchemy(app)
 CORS(app)
