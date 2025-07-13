@@ -10,3 +10,4 @@ pypdf
 markdown
 python-magic
 Flask-Migrate
+alembic
