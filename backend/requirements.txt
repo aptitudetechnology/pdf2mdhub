@@ -4,3 +4,5 @@ python-dotenv
 requests
 Werkzeug
 flask_sqlalchemy
+
+Flask-Moment
