@@ -16,7 +16,7 @@ class SearchInterface {
 
         this.currentPage = 1;
         this.totalPages = 1;
-        // Adjusted to 20 to align with backend's typical default per_page for /api/documents
+        // Adjusted to 20 to align with backend's typical default per_page for /api/search
         this.resultsPerPage = 20; 
 
         this.setupSearch();
@@ -71,38 +71,38 @@ class SearchInterface {
 
     async loadSearchResults() {
         const query = this.searchInput.value.trim();
-        // Ensure tags are comma-separated for the backend as your /api/documents expects (now 'tag')
+        // Ensure tags are comma-separated for the backend as your /api/search expects
         const tags = this.tagFilter.value.split(',').map(tag => tag.trim()).filter(tag => tag !== '').join(',');
         const dateFrom = this.dateFromInput.value;
         const dateTo = this.dateToInput.value;
 
         const params = new URLSearchParams({
             q: query,
-            tag: tags, // Changed from 'tags' to 'tag'
+            tags: tags,
             date_from: dateFrom,
             date_to: dateTo,
             page: this.currentPage,
             per_page: this.resultsPerPage
         });
 
-        console.log("DEBUG: Calling /api/documents with params:", params.toString()); // DEBUG: API call params
+        console.log("DEBUG: Calling /api/search with params:", params.toString()); // DEBUG: API call params
 
         try {
             this.resultsContainer.innerHTML = '<p class="no-results-message">Loading results...</p>'; // Loading indicator
 
-            const response = await fetch(`/api/documents?${params.toString()}`); // Changed endpoint to /api/documents
+            const response = await fetch(`/api/search?${params.toString()}`);
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
             const data = await response.json();
 
-            console.log("DEBUG: Received data from /api/documents:", data); // DEBUG: Raw data from backend
+            console.log("DEBUG: Received data from /api/search:", data); // DEBUG: Raw data from backend
 
             // --- CRITICAL CHANGE HERE: Adjusting to your backend's actual JSON structure ---
-            // Your backend's /api/documents endpoint now returns:
-            // { documents: [...], total_documents: X, total_pages: Y, current_page: Z, ... }
-            this.renderResults(data.documents); // Pass data.documents to render the documents
-            this.updatePagination(data.current_page, data.total_pages); // Use data.current_page and data.total_pages for page info
+            // Your backend's /api/search endpoint now returns:
+            // { results: [...], pagination: { page: X, pages: Y, ... } }
+            this.renderResults(data.results); // Pass data.results to render the documents
+            this.updatePagination(data.pagination.page, data.pagination.pages); // Use data.pagination object for page info
             console.log("DEBUG: renderResults and updatePagination called."); // DEBUG: Confirmation
 
         } catch (error) {
@@ -117,22 +117,22 @@ class SearchInterface {
         this.resultsContainer.innerHTML = ''; // Clear previous results
         if (documents && documents.length > 0) {
             documents.forEach(doc => {
-                console.log("DEBUG: Processing document:", doc.id, doc.original_name); // DEBUG: Each document being processed
+                console.log("DEBUG: Processing document:", doc.id, doc.title); // DEBUG: Each document being processed
                 const card = document.createElement('div');
                 card.className = 'document-card';
                 // Using a temporary variable to inspect the HTML string before assignment
                 const cardHtml = `
                     <div class="card-thumbnail">
-                        <img src="/static/images/default_pdf_thumbnail.png" alt="Document Thumbnail">
+                        <img src="${doc.thumbnail_url || '/static/images/default_pdf_thumbnail.png'}" alt="Document Thumbnail">
                     </div>
                     <div class="card-content">
-                        <h4 class="card-title">${doc.original_name || 'Untitled Document'}</h4>
-                        <p class="card-summary">Uploaded: ${new Date(doc.upload_date).toLocaleDateString()}</p>
+                        <h4 class="card-title">${doc.title || doc.original_name || 'Untitled Document'}</h4>
+                        <p class="card-summary">${doc.summary || 'No summary available.'}</p>
                         <div class="card-tags">
                             ${doc.tags && doc.tags.length > 0 ? doc.tags.map(tag => `<span class="tag">${tag.trim()}</span>`).join('') : '<span class="tag no-tag">No Tags</span>'}
                         </div>
                         <div class="card-actions">
-                            <a href="/viewer/${doc.id}" class="card-link view-markdown-link">View Markdown</a>
+                            <a href="/documents/${doc.id}" class="card-link view-markdown-link">View Markdown</a>
                             <a href="/api/documents/${doc.id}/download" class="card-link view-pdf-link" target="_blank">View PDF</a>
                         </div>
                     </div>
