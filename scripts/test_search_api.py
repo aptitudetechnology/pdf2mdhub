@@ -238,4 +238,30 @@ run_test(
 # With only 1 document, page 2 should be empty, but pagination info might still reflect total.
 run_test(
     "5a. Pagination - Page 2, 5 per_page",
-    f"{BASE_URL}?
+    f"{BASE_URL}?page=2&per_page=5",
+    check_results_count=0,
+    check_pagination={"total": 1, "page": 2, "pages": 1, "per_page": 5, "has_next": False, "has_prev": True},
+    check_query=""
+)
+
+# 5b. Pagination - Requesting a page beyond total_pages
+run_test(
+    "5b. Pagination - Requesting a page beyond total_pages",
+    f"{BASE_URL}?page=999&per_page=10",
+    check_results_count=0,
+    check_pagination={"total": 1, "page": 999, "pages": 1, "per_page": 10, "has_next": False, "has_prev": True},
+    check_query=""
+)
+
+# 6. Combined search (query, tags, dates, pagination)
+# Expect 0 results given the specific parameters that likely don't match the single uploaded document.
+# (e.g., query 'report' and tag 'project' are not in the existing document)
+run_test(
+    "6. Combined search (query, tags, dates, pagination)",
+    f"{BASE_URL}?q=report&tags=finance%2Cproject&date_from={last_month.strftime('%Y-%m-%d')}&page=1&per_page=2",
+    check_results_count=0,
+    check_pagination={"total": 0, "page": 1, "pages": 0, "per_page": 2, "has_next": False, "has_prev": False},
+    check_query="report"
+)
+
+print("\nAll tests finished.")
