@@ -1,64 +1,30 @@
-# test_upload_api.py
-import sys
-print("Python sys.path:", sys.path) # DEBUG: Prints Python's module search path
-
-# The import below is the one causing the error. We keep it to see sys.path before it fails.
-from backend.app import create_app # Adjust this import if your app is elsewhere
-
 import requests
 import json
-import io
-import os
-import time # For slight delays if needed
+from datetime import datetime, timedelta
 
-# --- Configuration ---
-# CORRECTED: Changed /api/documents to /api/upload
-UPLOAD_URL = "http://127.0.0.1:5050/api/upload" # This matches your upload_bp.route in app.py
+# Configuration for the API endpoint
+BASE_URL = "http://127.0.0.1:5000/api/search"
 
-# A simple dummy PDF content for testing.
-# This isn't a valid PDF, but it simulates a binary file for the upload process.
-# The content itself won't be processed as a PDF by the backend unless you have a real PDF parser.
-# For now, it just needs to be a byte stream.
-DUMMY_PDF_CONTENT = b"This is a test PDF document for upload. It contains some text that might be indexed later."
-DUMMY_PDF_FILENAME = "test_document.pdf"
-
-# --- Test Helper Function ---
-def run_upload_test(test_name, filename, file_content, metadata=None, tags=None, expected_status=201, expected_message_substring=None, check_document_data=None):
+def run_test(test_name, url, expected_status=200, check_results_count=None, check_pagination=None, check_tags=None, check_query=None):
     """
-    Runs a single API upload test and asserts its outcome.
+    Runs a single API search test and asserts its outcome.
 
     Args:
         test_name (str): A descriptive name for the test.
-        filename (str): The name of the file to send.
-        file_content (bytes): The binary content of the file.
-        metadata (dict, optional): Dictionary for document_metadata.
-        tags (list, optional): List of strings for tags.
-        expected_status (int): The expected HTTP status code (default: 201 Created).
-        expected_message_substring (str, optional): A substring expected in the 'message' field of the response.
-        check_document_data (dict, optional): A dictionary of key-value pairs to check in the 'document' object.
+        url (str): The full URL to request for the search.
+        expected_status (int): The expected HTTP status code (default: 200).
+        check_results_count (int, optional): The expected number of documents in the 'results' list.
+        check_pagination (dict, optional): A dictionary of expected key-value pairs for the 'pagination' object.
+        check_tags (list, optional): A list of tags to check if they are present in the returned documents.
+                                      For simplicity, assumes at least one document should contain these tags.
+        check_query (str, optional): The expected value for the 'query' field in the response.
     """
-    print(f"\n===== Running Upload Test: {test_name} =====")
-    print(f"Uploading to URL: {UPLOAD_URL}")
-
-    # Prepare the file for requests
-    files = {'file': (filename, io.BytesIO(file_content), 'application/pdf')}
-
-    # Prepare form data
-    data = {}
-    if metadata is not None:
-        data['document_metadata'] = json.dumps(metadata)
-    if tags is not None:
-        data['tags'] = json.dumps(tags)
-
+    print(f"\n===== Running Test: {test_name} =====")
+    print(f"Requesting URL: {url}")
     try:
-        response = requests.post(UPLOAD_URL, files=files, data=data)
-        response_data = {}
-        try:
-            response_data = response.json()
-        except json.JSONDecodeError:
-            print(f"Test '{test_name}' FAILED: Could not decode JSON from response. Response content: {response.text}")
-            print(f"Status Code: {response.status_code}")
-            assert False, "JSON Decode Error"
+        response = requests.get(url)
+        response.raise_for_status() # Raise an HTTPError for bad responses (4xx or 5xx)
+        response_data = response.json()
 
         print(f"\n--- API Response (Status: {response.status_code}) ---")
         print(json.dumps(response_data, indent=2))
@@ -66,176 +32,236 @@ def run_upload_test(test_name, filename, file_content, metadata=None, tags=None,
 
         # Assertion 1: Check HTTP status code
         assert response.status_code == expected_status, \
-            f"Test '{test_name}' FAILED: Expected status {expected_status}, got {response.status_code}. Response: {response.text}"
+            f"Test '{test_name}' FAILED: Expected status {expected_status}, got {response.status_code}"
 
-        # Assertion 2: Check message substring
-        if expected_message_substring:
-            actual_message = response_data.get('message', '')
-            assert expected_message_substring in actual_message, \
-                f"Test '{test_name}' FAILED: Expected message to contain '{expected_message_substring}', got '{actual_message}'"
+        # **FIXED:** Assert that 'results' key exists
+        assert 'results' in response_data, \
+            f"Test '{test_name}' FAILED: Assertion Error - Response missing 'results' key"
 
-        # Assertion 3: Check returned document data if status is success
-        if expected_status >= 200 and expected_status < 300 and check_document_data:
-            returned_document = response_data.get('document', {})
-            assert returned_document, f"Test '{test_name}' FAILED: No 'document' object in successful response."
-            for key, expected_value in check_document_data.items():
-                actual_value = returned_document.get(key)
-                if key == 'tags': # Special handling for tags, order might differ
-                    actual_value_set = set(actual_value) if actual_value else set()
-                    expected_value_set = set(expected_value) if expected_value else set()
-                    assert actual_value_set == expected_value_set, \
-                        f"Test '{test_name}' FAILED: Document '{key}' mismatch. Expected {expected_value}, got {actual_value}"
-                elif key == 'document_metadata': # Special handling for metadata dict
-                     for meta_key, meta_val in expected_value.items():
-                         assert returned_document['document_metadata'].get(meta_key) == meta_val, \
-                            f"Test '{test_name}' FAILED: Document metadata '{meta_key}' mismatch. Expected {meta_val}, got {returned_document['document_metadata'].get(meta_key)}"
+        # **FIXED:** Get results from the 'results' key
+        results = response_data.get('results', [])
+        pagination = response_data.get('pagination', {})
+        query = response_data.get('query', '') # Get the query from the response
+
+        # Assertion 2: Check results count if specified
+        if check_results_count is not None:
+            assert len(results) == check_results_count, \
+                f"Test '{test_name}' FAILED: Expected {check_results_count} results, got {len(results)}"
+
+        # Assertion 3: Check pagination if specified
+        if check_pagination:
+            for key, expected_value in check_pagination.items():
+                actual_value = pagination.get(key)
+                # Handle boolean comparison explicitly
+                if isinstance(expected_value, bool) and isinstance(actual_value, bool):
+                    assert actual_value == expected_value, \
+                        f"Test '{test_name}' FAILED: Pagination '{key}' mismatch. Expected {expected_value}, got {actual_value}"
                 else:
                     assert actual_value == expected_value, \
-                        f"Test '{test_name}' FAILED: Document '{key}' mismatch. Expected {expected_value}, got {actual_value}"
-        
+                        f"Test '{test_name}' FAILED: Pagination '{key}' mismatch. Expected {expected_value}, got {actual_value}"
+
+
+        # Assertion 4: Check tags in results (if documents are expected)
+        if check_tags and check_results_count and check_results_count > 0:
+            found_all_expected_tags = True
+            for expected_tag in check_tags:
+                tag_found_in_any_doc = False
+                for doc in results:
+                    doc_tags = doc.get('tags', [])
+                    if expected_tag in doc_tags:
+                        tag_found_in_any_doc = True
+                        break
+                if not tag_found_in_any_doc:
+                    found_all_expected_tags = False
+                    assert False, f"Test '{test_name}' FAILED: No document found with tag '{expected_tag}'"
+            if found_all_expected_tags: # Only print PASS if all tags were found
+                 print(f"Test '{test_name}' PASSED for tags check.")
+        elif check_tags and (check_results_count is None or check_results_count == 0):
+            # If tags are checked but no results are expected, ensure no results are returned.
+            assert len(results) == 0, f"Test '{test_name}' FAILED: Expected no results, but received some while checking for tags."
+
+
+        # Assertion 5: Check query in response
+        if check_query is not None:
+            assert query == check_query, \
+                f"Test '{test_name}' FAILED: Query mismatch. Expected '{check_query}', got '{query}'"
+
         print(f"Test '{test_name}' PASSED.")
 
     except requests.exceptions.RequestException as e:
         print(f"Test '{test_name}' FAILED: Request failed - {e}")
     except AssertionError as e:
         print(f"Test '{test_name}' FAILED: {e}")
+    except json.JSONDecodeError:
+        print(f"Test '{test_name}' FAILED: Could not decode JSON from response. Response content: {response.text}")
     except Exception as e:
         print(f"Test '{test_name}' FAILED: An unexpected error occurred - {e}")
 
 # --- Test Cases ---
-print("Starting backend API upload tests...\n")
+print("Starting backend API tests...\n")
 
-# Test 1: Basic successful upload with minimal data
-run_upload_test(
-    "1. Basic successful upload",
-    filename=DUMMY_PDF_FILENAME,
-    file_content=DUMMY_PDF_CONTENT,
-    expected_status=201,
-    expected_message_substring="File uploaded successfully",
-    check_document_data={
-        "filename": DUMMY_PDF_FILENAME,
-        "title": "test_document", # Default title derived from filename
-        "status": "uploaded",
-        "tags": [],
-        "document_metadata": {}
-    }
+# Get today's date and calculate relevant dates for date range tests
+today = datetime.now()
+yesterday = today - timedelta(days=1)
+last_week = today - timedelta(days=7)
+last_month = today - timedelta(days=30)
+future_date = today + timedelta(days=7)
+
+
+# 1. All documents (empty query)
+run_test(
+    "1. All documents (empty query)",
+    f"{BASE_URL}", # No query params for simplicity, or ?q= for explicit empty query
+    check_results_count=1, # Expecting 1 document from previous upload
+    check_pagination={"total": 1, "page": 1, "pages": 1, "per_page": 20, "has_next": False, "has_prev": False},
+    check_query=""
 )
 
-# Test 2: Upload with custom title and tags
-custom_title = "Invoice Report Q3"
-custom_tags = ["invoice", "finance", "report"]
-custom_metadata = {"department": "accounting", "priority": "high"}
-
-run_upload_test(
-    "2. Upload with custom title, tags, and metadata",
-    filename="invoice_q3.pdf",
-    file_content=DUMMY_PDF_CONTENT,
-    metadata={"title": custom_title, "source": "email"}, # Include custom title in metadata
-    tags=custom_tags,
-    expected_status=201,
-    expected_message_substring="File uploaded successfully",
-    check_document_data={
-        "filename": "invoice_q3.pdf",
-        "title": custom_title, # Should be the custom title from metadata
-        "status": "uploaded",
-        "tags": custom_tags,
-        "document_metadata": {"title": custom_title, "source": "email"}
-    }
+# 2. Search by query 'test' (should yield no results if content does not contain 'test')
+# The uploaded content does not contain "test"
+run_test(
+    "2. Search by query 'test'",
+    f"{BASE_URL}?q=test",
+    check_results_count=0,
+    check_pagination={"total": 0, "page": 1, "pages": 0, "per_page": 20, "has_next": False, "has_prev": False},
+    check_query="test"
 )
 
-# Test 3: Upload with empty metadata and tags
-run_upload_test(
-    "3. Upload with empty metadata and tags",
-    filename="empty_meta_tags.pdf",
-    file_content=DUMMY_PDF_CONTENT,
-    metadata={},
-    tags=[],
-    expected_status=201,
-    expected_message_substring="File uploaded successfully",
-    check_document_data={
-        "filename": "empty_meta_tags.pdf",
-        "title": "empty_meta_tags",
-        "status": "uploaded",
-        "tags": [],
-        "document_metadata": {}
-    }
+# 2a. Search by query 'document' (should yield result if content contains 'document' - which it does from markdown_content)
+run_test(
+    "2a. Search by query 'document'",
+    f"{BASE_URL}?q=document",
+    check_results_count=1,
+    check_pagination={"total": 1, "page": 1, "pages": 1, "per_page": 20, "has_next": False, "has_prev": False},
+    check_query="document"
 )
 
-# Test 4: Upload without any metadata or tags fields
-run_upload_test(
-    "4. Upload without metadata or tags fields",
-    filename="no_meta_no_tags.pdf",
-    file_content=DUMMY_PDF_CONTENT,
-    expected_status=201,
-    expected_message_substring="File uploaded successfully",
-    check_document_data={
-        "filename": "no_meta_no_tags.pdf",
-        "title": "no_meta_no_tags",
-        "status": "uploaded",
-        "tags": [],
-        "document_metadata": {}
-    }
-)
-
-# Test 5: Upload with invalid JSON for document_metadata
-run_upload_test(
-    "5. Upload with invalid JSON for document_metadata",
-    filename="invalid_meta.pdf",
-    file_content=DUMMY_PDF_CONTENT,
-    metadata="this is not valid json", # Pass a string directly, not a dict
-    tags=[],
-    expected_status=400,
-    expected_message_substring="Invalid JSON for document_metadata"
-)
-
-# Test 6: Upload with invalid JSON for tags
-run_upload_test(
-    "6. Upload with invalid JSON for tags",
-    filename="invalid_tags.pdf",
-    file_content=DUMMY_PDF_CONTENT,
-    metadata={"title": "Test Invalid Tags"},
-    tags="this is not valid json for tags", # Pass a string directly, not a list
-    expected_status=201, # The backend is designed to *try* to parse, and if it fails, treat as literal string for the tag
-    expected_message_substring="File uploaded successfully",
-    check_document_data={
-        "filename": "invalid_tags.pdf",
-        "title": "Test Invalid Tags",
-        "status": "uploaded",
-        "tags": ["this is not valid json for tags"], # It should treat it as a single literal tag
-        "document_metadata": {"title": "Test Invalid Tags"}
-    }
+# 2b. Search by query 'report' (should yield no result if content does not contain 'report')
+# The uploaded content does not contain "report"
+run_test(
+    "2b. Search by query 'report'",
+    f"{BASE_URL}?q=report",
+    check_results_count=0,
+    check_pagination={"total": 0, "page": 1, "pages": 0, "per_page": 20, "has_next": False, "has_prev": False},
+    check_query="report"
 )
 
 
-# Test 7: Upload with no file part (should be caught by backend before save_file)
-# This test requires manipulating `files` to be empty
-print(f"\n===== Running Upload Test: 7. Upload with no file part =====")
-try:
-    response = requests.post(UPLOAD_URL, files={}, data={'document_metadata': '{}'})
-    response_data = {}
-    try:
-        response_data = response.json()
-    except json.JSONDecodeError:
-        print(f"Test '7. Upload with no file part' FAILED: Could not decode JSON from response. Response content: {response.text}")
-        print(f"Status Code: {response.status_code}")
-        assert False, "JSON Decode Error"
+# 3. Search by single tag 'invoice' (should yield 1 result as the uploaded document has 'invoice' tag)
+run_test(
+    "3. Search by single tag 'invoice'",
+    f"{BASE_URL}?tags=invoice",
+    check_results_count=1,
+    check_tags=['invoice'],
+    check_pagination={"total": 1, "page": 1, "pages": 1, "per_page": 20, "has_next": False, "has_prev": False},
+    check_query="" # Tags don't change the query field, which reflects the 'q' parameter
+)
 
-    print(f"\n--- API Response (Status: {response.status_code}) ---")
-    print(json.dumps(response_data, indent=2))
-    print("--------------------------------------")
-
-    assert response.status_code == 400, \
-        f"Test '7. Upload with no file part' FAILED: Expected status 400, got {response.status_code}. Response: {response.text}"
-    assert "No file part in the request" in response_data.get('error', ''), \
-        f"Test '7. Upload with no file part' FAILED: Expected error 'No file part', got '{response_data.get('error')}'"
-    print(f"Test '7. Upload with no file part' PASSED.")
-
-except requests.exceptions.RequestException as e:
-    print(f"Test '7. Upload with no file part' FAILED: Request failed - {e}")
-except AssertionError as e:
-    print(f"Test '7. Upload with no file part' FAILED: {e}")
-except Exception as e:
-    print(f"Test '7. Upload with no file part' FAILED: An unexpected error occurred - {e}")
+# 3a. Search by single tag 'meeting' (should yield no result as the uploaded document has 'invoice' only)
+run_test(
+    "3a. Search by single tag 'meeting'",
+    f"{BASE_URL}?tags=meeting",
+    check_results_count=0,
+    check_pagination={"total": 0, "page": 1, "pages": 0, "per_page": 20, "has_next": False, "has_prev": False},
+    check_query=""
+)
 
 
-print("\nAll upload tests finished.")
+# 3b. Search by multiple tags 'invoice,report' (should yield 1 result if the document has 'invoice', even if not 'report')
+run_test(
+    "3b. Search by multiple tags 'invoice,report'",
+    f"{BASE_URL}?tags=invoice%2Creport", # URL-encoded comma
+    check_results_count=1,
+    check_tags=['invoice'], # Still expect 'invoice' as the only relevant tag from our single uploaded doc
+    check_pagination={"total": 1, "page": 1, "pages": 1, "per_page": 20, "has_next": False, "has_prev": False},
+    check_query=""
+)
+
+# 3c. Search by non-existent tag
+run_test(
+    "3c. Search by non-existent tag",
+    f"{BASE_URL}?tags=nonexistenttag",
+    check_results_count=0,
+    check_pagination={"total": 0, "page": 1, "pages": 0, "per_page": 20, "has_next": False, "has_prev": False},
+    check_query=""
+)
+
+# 4. Search by date_from (last week to today)
+# Assuming the document was uploaded today (current date: July 13, 2025)
+run_test(
+    "4. Search by date_from (last week to today)",
+    f"{BASE_URL}?date_from={last_week.strftime('%Y-%m-%d')}",
+    check_results_count=1,
+    check_pagination={"total": 1, "page": 1, "pages": 1, "per_page": 20, "has_next": False, "has_prev": False},
+    check_query=""
+)
+
+# 4a. Search by date_to (up to yesterday)
+# The document was uploaded *today*, so filtering up to yesterday should yield 0 results
+run_test(
+    "4a. Search by date_to (up to yesterday)",
+    f"{BASE_URL}?date_to={yesterday.strftime('%Y-%m-%d')}",
+    check_results_count=0,
+    check_pagination={"total": 0, "page": 1, "pages": 0, "per_page": 20, "has_next": False, "has_prev": False},
+    check_query=""
+)
+
+# 4b. Search by full date range (last month to today)
+run_test(
+    "4b. Search by full date range (last month to today)",
+    f"{BASE_URL}?date_from={last_month.strftime('%Y-%m-%d')}&date_to={today.strftime('%Y-%m-%d')}",
+    check_results_count=1,
+    check_pagination={"total": 1, "page": 1, "pages": 1, "per_page": 20, "has_next": False, "has_prev": False},
+    check_query=""
+)
+
+# 4c. Search with future date_from (should yield no results if no future documents)
+run_test(
+    "4c. Search with future date_from (should yield no results if no future documents)",
+    f"{BASE_URL}?date_from={future_date.strftime('%Y-%m-%d')}",
+    check_results_count=0,
+    check_pagination={"total": 0, "page": 1, "pages": 0, "per_page": 20, "has_next": False, "has_prev": False},
+    check_query=""
+)
+
+# 5. Pagination - Page 1, 5 per_page
+# With only 1 document, this will show 1 document on page 1, total pages 1.
+run_test(
+    "5. Pagination - Page 1, 5 per_page",
+    f"{BASE_URL}?page=1&per_page=5",
+    check_results_count=1,
+    check_pagination={"total": 1, "page": 1, "pages": 1, "per_page": 5, "has_next": False, "has_prev": False},
+    check_query=""
+)
+
+# 5a. Pagination - Page 2, 5 per_page
+# With only 1 document, page 2 should be empty, but pagination info might still reflect total.
+run_test(
+    "5a. Pagination - Page 2, 5 per_page",
+    f"{BASE_URL}?page=2&per_page=5",
+    check_results_count=0,
+    check_pagination={"total": 1, "page": 2, "pages": 1, "per_page": 5, "has_next": False, "has_prev": True},
+    check_query=""
+)
+
+# 5b. Pagination - Requesting a page beyond total_pages
+run_test(
+    "5b. Pagination - Requesting a page beyond total_pages",
+    f"{BASE_URL}?page=999&per_page=10",
+    check_results_count=0,
+    check_pagination={"total": 1, "page": 999, "pages": 1, "per_page": 10, "has_next": False, "has_prev": True},
+    check_query=""
+)
+
+# 6. Combined search (query, tags, dates, pagination)
+# Expect 0 results given the specific parameters that likely don't match the single uploaded document.
+# (e.g., query 'report' and tag 'project' are not in the existing document)
+run_test(
+    "6. Combined search (query, tags, dates, pagination)",
+    f"{BASE_URL}?q=report&tags=finance%2Cproject&date_from={last_month.strftime('%Y-%m-%d')}&page=1&per_page=2",
+    check_results_count=0,
+    check_pagination={"total": 0, "page": 1, "pages": 0, "per_page": 2, "has_next": False, "has_prev": False},
+    check_query="report"
+)
+
+print("\nAll tests finished.")

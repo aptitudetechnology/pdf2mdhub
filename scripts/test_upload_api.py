@@ -12,7 +12,8 @@ import os
 import time # For slight delays if needed
 
 # --- Configuration ---
-UPLOAD_URL = "http://127.0.0.1:5050/api/documents" # This matches your upload_bp.route
+# CORRECTED: Changed /api/documents to /api/upload
+UPLOAD_URL = "http://127.0.0.1:5050/api/upload" # This matches your upload_bp.route in app.py
 
 # A simple dummy PDF content for testing.
 # This isn't a valid PDF, but it simulates a binary file for the upload process.
