@@ -121,7 +121,7 @@ class SearchInterface {
                         <div class="card-tags">
                             ${doc.tags && doc.tags.length > 0 ? doc.tags.map(tag => `<span class="tag">${tag.trim()}</span>`).join('') : '<span class="tag no-tag">No Tags</span>'}
                         </div>
-                        <a href="/documents/${doc.id}" class="card-link">View Document</a>
+                        <a href="/api/documents/${doc.id}/download" class="card-link" target="_blank">View Document</a>
                     </div>
                 `;
                 this.resultsContainer.appendChild(card);
