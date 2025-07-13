@@ -35,8 +35,10 @@ def upload_document():
             return jsonify({"error": "Invalid JSON for document_metadata"}), 400
 
         # Extract title from metadata or default to filename (REQUIRED for nullable=False)
-        document_title = metadata_dict.get('title', file.filename.rsplit('.', 1)[0])
-
+        #document_title = metadata_dict.get('title', file.filename.rsplit('.', 1)[0])
+        # NEW - check form field first, then metadata, then filename
+        document_title = request.form.get('title') or metadata_dict.get('title') or file.filename.rsplit('.', 1)[0]
+        
         # 3. Handle tags from request - expecting JSON string from frontend
         raw_tags = request.form.get('tags')
         tag_names = []
