@@ -1,8 +1,8 @@
 import os
 import logging
 from datetime import datetime
-import subprocess # Added for calling external commands
-import markdown   # Added for server-side Markdown to HTML conversion
+import subprocess
+import markdown
 # from PyPDF2 import PdfReader # Not strictly needed for conversion with pdf2md, but keeping for other potential PDF ops
 from flask import Flask, request, jsonify, send_from_directory, render_template, url_for, redirect
 from flask_sqlalchemy import SQLAlchemy
@@ -30,20 +30,15 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB limit
 # Ensure upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-
-
-# Initialize extensions
+# Initialize extensions (THIS IS THE ONLY PLACE IT SHOULD BE)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-# Register the 'db' command for Flask CLI
-from flask_migrate import MigrateCommand # Add this import
-app.cli.add_command('db', MigrateCommand) # Add this line
+# REMOVE THESE TWO LINES BELOW, they are not needed for Flask-Migrate 3.0+
+# from flask_migrate import MigrateCommand
+# app.cli.add_command('db', MigrateCommand)
 
 # Configure Content Security Policy (CSP) headers
-# For local development with external CDN (jsdelivr for marked.js previously) and PDF embedding
-# If you are removing marked.js and using server-side rendering, 'unsafe-eval' might not be strictly needed for that,
-# but can be left for other potential inline scripts or development tools.
 @app.after_request
 def add_security_headers(response):
     csp = (
@@ -250,8 +245,6 @@ def upload_file():
 
         # Trigger background processing (in a real app, this would be a task queue)
         # For this simple example, we'll run it in a new thread or directly
-        # For immediate testing, you might run it directly:
-        # process_document_task(new_document.id)
         # For non-blocking, a simple threading approach (not for production):
         import threading
         threading.Thread(target=process_document_task, args=(new_document.id,)).start()
