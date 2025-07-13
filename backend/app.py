@@ -530,4 +530,92 @@ def download_document(document_id):
 @app.route('/api/search', methods=['GET'])
 def search_documents():
     """Search documents"""
-    logger.info("--- START: GET
+    logger.info("--- START: GET /api/search Request ---")
+    try:
+        query_str = request.args.get('q', '')
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+
+        logger.info(f"Search params: query='{query_str}', page={page}, per_page={per_page}")
+
+        # If no query is provided, return all documents (paginated)
+        if not query_str:
+            base_query = Document.query
+            logger.info("No search query provided, listing all documents.")
+        else:
+            # Search in multiple fields if a query is provided
+            base_query = Document.query.filter(
+                db.or_(
+                    Document.original_name.contains(query_str),
+                    Document.notes.contains(query_str),
+                    Document.markdown_content.contains(query_str)
+                )
+            )
+            logger.info(f"Searching for documents matching '{query_str}'.")
+
+        # Order by upload date (newest first)
+        search_query = base_query.order_by(Document.upload_date.desc())
+
+        # Paginate results
+        results = search_query.paginate(
+            page=page,
+            per_page=per_page,
+            error_out=False
+        )
+
+        logger.info(f"Found {results.total} search results. Returning page {page} of {results.pages}.")
+        logger.info("--- END: GET /api/search Request (200 - Success) ---")
+        return jsonify({
+            'query': query_str,
+            'results': [doc.to_dict() for doc in results.items],
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': results.total,
+                'pages': results.pages,
+                'has_next': results.has_next,
+                'has_prev': results.has_prev
+            }
+        })
+
+    except Exception as e:
+        logger.exception(f"Error searching documents.") # Logs traceback
+        logger.info("--- END: GET /api/search Request (500 - Server Error) ---")
+        return jsonify({'error': 'Search failed'}), 500
+
+@app.route('/api/tags', methods=['GET'])
+def list_tags():
+    """List all tags"""
+    logger.info("--- START: GET /api/tags Request ---")
+    try:
+        tags = Tag.query.all()
+        logger.info(f"Returning {len(tags)} tags.")
+        logger.info("--- END: GET /api/tags Request (200 - Success) ---")
+        return jsonify([tag.to_dict() for tag in tags])
+    except Exception as e:
+        logger.exception(f"Error listing tags.") # Logs traceback
+        logger.info("--- END: GET /api/tags Request (500 - Server Error) ---")
+        return jsonify({'error': 'Failed to list tags'}), 500
+
+# Web interface routes
+@app.route('/')
+def index():
+    logger.info("--- Serving index page (search.html) ---")
+    return render_template('search.html')
+
+@app.route('/upload')
+def upload_page():
+    logger.info("--- Serving upload page (upload.html) ---")
+    return render_template('upload.html')
+
+@app.route('/documents/<int:document_id>') # Changed from /viewer/<int:document_id> for consistency with link in search.js
+def view_document_page(document_id): # Renamed to better reflect direct document viewing
+    logger.info(f"--- Serving document view page (viewer.html) for document ID: {document_id} ---")
+    return render_template('viewer.html', document_id=document_id)
+
+# The single and correct entry point for running the app and creating tables
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()  # This ensures tables are created when you run app.py directly
+        logger.info("Database tables ensured.")
+    app.run(debug=True, host='0.0.0.0', port=5050)
