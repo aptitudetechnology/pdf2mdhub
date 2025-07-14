@@ -11,12 +11,13 @@ WORKDIR $APP_HOME
 # Install system dependencies
 # poppler-utils provides pdftotext, which the client-side pdf2md might rely on or your backend might use
 # npm is needed to install the client-side pdf2md package
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
+# build-base provides common build tools like gcc, g++, and make, equivalent to build-essential
+RUN apk update \
+    && apk add --no-cache \
     poppler-utils \
     npm \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+    build-base \
+    && rm -rf /var/cache/apk/* # Clean up apk cache
 
 # Copy backend requirements and install Python dependencies
 # Use --no-cache-dir to keep the image smaller
@@ -31,43 +32,14 @@ COPY backend $APP_HOME/backend/
 COPY frontend/static $APP_HOME/frontend/static/
 COPY frontend/templates $APP_HOME/frontend/templates/
 
-# --- Install client-side pdf2md library ---
-# The README states "npm install pdf2md" for client-side.
-# We'll install it globally or in a place accessible to your static files.
-# Assuming pdf2md.min.js from OpenGovSG's pdf2md library is then copied to frontend/static/lib/pdf2md.min.js
-# This step might be redundant if frontend/static/lib/pdf2md.min.js is pre-built and copied in.
-# If you build frontend assets within the container, you'd need a separate build step here.
-# For now, we'll assume `pdf2md.min.js` is already in `frontend/static/lib` or will be placed there.
-# If 'npm install pdf2md' directly creates assets your frontend uses, you might need to adjust this.
-# For a typical Flask setup, pre-built static assets are simply copied.
-# Let's ensure 'pdf2md' itself (the JS library) is installed if your build process needs it from node_modules.
-# If your frontend is built separately and only the bundled JS is copied, you don't need npm install pdf2md here.
-# Given the README: "lib/pdf2md.min.js # OpenGovSG pdf2md library", it implies it's a pre-built lib.
-# Therefore, the `npm install pdf2md` might not be necessary *inside* this backend container unless
-# the backend itself needs to interact with the npm package in some way, which is unlikely for a Flask app.
-# I'll keep the `npm` install for `poppler-utils` (which you explicitly list) but omit `npm install pdf2md`
-# for the backend image unless you clarify its necessity for the backend itself.
-# If frontend build happens in *this* Dockerfile, then you would need `npm install` and likely
-# a build step like `npm run build` within a dedicated frontend directory.
-
-# Let's revisit the npm install pdf2md based on the README's client-side conversion.
-# "npm install pdf2md" is for the *client-side* library. This generally means it's
-# installed in the frontend development environment, and the resulting `pdf2md.min.js`
-# is then copied to `frontend/static/lib`. So, the `npm install pdf2md` command itself
-# is not typically run within the backend Dockerfile. The presence of `npm` and `poppler-utils`
-# suggests the possibility of backend use, but `poppler-utils` is usually CLI tools.
-# Let's assume you need `poppler-utils` for some reason on the backend, but `npm install pdf2md` is for frontend build.
-# If your backend Flask app actually calls out to `npm` or needs the `pdf2md` Node.js package directly,
-# please specify. Otherwise, the current `apt-get install npm` is enough if you're just putting `npm` on the system.
-
-# The `README` implies that `poppler-utils` are system prerequisites, and `npm install pdf2md`
-# is for the client-side. It then says "For Docker deployment, these dependencies are handled in the container build process."
-# This could mean that `poppler-utils` *and* `npm` are installed in the backend container
-# because the Flask app *might* shell out to `pdftotext` or run Node.js scripts.
-# Given the "Client-side PDF to Markdown conversion", it's more likely `pdftotext` is used by the JS library in the browser.
-# For safety, I'll keep `poppler-utils` and `npm` system installations in the backend image,
-# as per your `README` stating they're "handled in the container build process."
-# However, if your Flask app does NOT use `npm` or `pdftotext` directly, you can remove them for a smaller image.
+# --- Notes on client-side pdf2md library and npm ---
+# As you've noted in your comments, "npm install pdf2md" is typically for the client-side
+# library development and build, not usually for inclusion in a backend Flask container.
+# If your Flask backend *does not* directly shell out to Node.js scripts or `npm` commands,
+# you can likely remove `npm` from the `apk add` line to further reduce image size.
+# `poppler-utils` (for `pdftotext`) is kept as you explicitly mentioned it. If your Flask
+# app doesn't use `pdftotext` directly, you can remove that too.
+# The `rm -rf /var/cache/apk/*` replaces `rm -rf /var/lib/apt/lists/*` for Alpine's package manager.
 
 # Set the working directory for the Flask application
 WORKDIR $APP_HOME/backend
