@@ -3,7 +3,6 @@ import sys
 import psycopg2
 
 def get_db_url():
-    """Get database URL from environment variable or use default"""
     return os.getenv(
         "DATABASE_URL",
         "postgresql://user:password@localhost:5432/pdf2mdhub"
@@ -21,7 +20,6 @@ def main():
     
     print("Connection successful.")
     
-    # Check for expected tables
     expected_tables = {"documents", "tags", "document_tags"}
     
     try:
