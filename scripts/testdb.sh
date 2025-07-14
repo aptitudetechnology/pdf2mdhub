@@ -5,7 +5,7 @@ DB_URL="${DATABASE_URL:-postgresql://user:password@localhost:5432/pdf2mdhub}"
 
 echo "Connecting to PostgreSQL at: $DB_URL"
 
-# Test connection
+# Test connection #
 if ! psql "$DB_URL" -c "SELECT 1;" > /dev/null 2>&1; then
     echo "ERROR: Could not connect to PostgreSQL"
     exit 1
