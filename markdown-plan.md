@@ -85,3 +85,24 @@ Goal: Display the fetched markdown content (from the existing /api/documents/<do
         Show how to configure the markdown renderer's highlight option.
 
         keep vanilla js as much as possible
+
+        ~/pdf2mdhub/backend$ cd md
+(venv) chris@simple:~/pdf2mdhub/backend/md$ ls
+08076c272cf05e322bc6359539db1fd9_8176302258184272_payment  86c056828d8c61057a0ecae90baf2516_invoice_q3  cbc29fb27b88cb1bb2132fa7fccc9108_invoice_q3
+830b811a08f754153a8a5a990ca5e7aa_invoice_q3                a59c49e0b5fa438cb20fd4e219e4947c_invoice_q3
+(venv) chris@simple:~/pdf2mdhub/backend/md$ ls -poa
+total 28
+drwxrwxr-x  7 chris 4096 Jul 14 00:08 ./
+drwxrwxr-x 10 chris 4096 Jul 14 00:42 ../
+drwxrwxr-x  4 chris 4096 Jul 14 00:08 08076c272cf05e322bc6359539db1fd9_8176302258184272_payment/
+drwxrwxr-x  4 chris 4096 Jul 13 23:44 830b811a08f754153a8a5a990ca5e7aa_invoice_q3/
+drwxrwxr-x  4 chris 4096 Jul 13 19:07 86c056828d8c61057a0ecae90baf2516_invoice_q3/
+drwxrwxr-x  4 chris 4096 Jul 13 23:23 a59c49e0b5fa438cb20fd4e219e4947c_invoice_q3/
+drwxrwxr-x  4 chris 4096 Jul 13 23:39 cbc29fb27b88cb1bb2132fa7fccc9108_invoice_q3/
+(venv) chris@simple:~/pdf2mdhub/backend/md$ cd 08076c272cf05e322bc6359539db1fd9_8176302258184272_payment/
+(venv) chris@simple:~/pdf2mdhub/backend/md/08076c272cf05e322bc6359539db1fd9_8176302258184272_payment$ ls
+08076c272cf05e322bc6359539db1fd9_8176302258184272_payment.md  images  src
+(venv) chris@simple:~/pdf2mdhub/backend/md/08076c272cf05e322bc6359539db1fd9_8176302258184272_payment$ cd images/
+(venv) chris@simple:~/pdf2mdhub/backend/md/08076c272cf05e322bc6359539db1fd9_8176302258184272_payment/images$ ls
+08076c272cf05e322bc6359539db1fd9_8176302258184272_payment-1.png
+(venv) chris@simple:~/pdf2mdhub/backend/md/08076c272cf05e322bc6359539db1fd9_8176302258184272_payment/images$ cd //
