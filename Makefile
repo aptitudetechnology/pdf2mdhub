@@ -24,11 +24,11 @@ help:
 build:
 	@echo "Building Docker image $(IMAGE_NAME)..."
 	# MODIFIED: Use -f to specify Dockerfile path and '.' for the build context
-	docker build -t $(IMAGE_NAME) -f $(DOCKERFILE_DIR)/Dockerfile .
+	DOCKER_BUILDKIT=0 docker build -t $(IMAGE_NAME) -f $(DOCKERFILE_DIR)/Dockerfile .
 
 run: build
 	@echo "Running Docker container $(CONTAINER_NAME) on port $(APP_PORT)..."
-	DOCKER_BUILDKIT=0 docker run -p $(APP_PORT):$(APP_PORT) --name $(CONTAINER_NAME) -d $(IMAGE_NAME)
+	docker run -p $(APP_PORT):$(APP_PORT) --name $(CONTAINER_NAME) -d $(IMAGE_NAME)
 
 up: build run
 
