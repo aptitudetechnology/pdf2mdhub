@@ -1,35 +1,17 @@
-#!/bin/bash
-# Minimal start-up script for PDF2MDHub in a Docker container
-set -e # Exit immediately if a command exits with a non-zero status.
+FROM python:3.11-slim
+WORKDIR /app
 
-echo "Starting PDF2MDHub in Docker..."
+# --- Copy docker-start.sh and make it executable ---
+# This script will be the entrypoint for your application in Docker.
+COPY docker-start.sh /app/docker-start.sh
+RUN chmod +x /app/docker-start.sh
 
-# Navigate to the /app directory (your WORKDIR in Dockerfile)
-# This ensures that '/app' is the current working directory,
-# which is important for Python to find the 'backend' package correctly
-cd /app
+COPY backend/ /app/backend/
+COPY frontend/ /app/frontend/
+COPY backend/requirements.txt /app/backend/requirements.txt
+RUN pip install --no-cache-dir -r /app/backend/requirements.txt
+EXPOSE 5000
 
-# --- 1. Export Flask app environment variables ---
-# FLASK_APP should point to your app factory function within the 'backend' package.
-# Assuming your app factory is `create_app()` in `app.py` inside the `backend` package.
-export FLASK_APP="backend.app:create_app()"
-export FLASK_ENV=production # Set to 'development' for debugging, 'production' for deployment.
-
-# Ensure necessary directories exist at runtime
-# These are used for uploads and Flask's instance configuration.
-mkdir -p uploads
-mkdir -p instance
-
-# --- 2. Database Migration Step (Optional, if using Flask-Migrate) ---
-# Uncomment and use if you need to apply database migrations on container start.
-# This is typical for persistent databases (e.g., PostgreSQL, MySQL) managed with Flask-Migrate.
-# If your database is ephemeral (e.g., SQLite inside the container that gets reset), you might not need this.
-# echo "Applying database migrations (if configured)..."
-# flask db upgrade
-
-# --- 3. Starting Flask server with Gunicorn (Recommended for Production) ---
-# Gunicorn is a production-ready WSGI HTTP Server for Python.
-# Ensure 'gunicorn' is listed in your backend/requirements.txt file.
-echo "Starting Flask server with Gunicorn..."
-# Adjust --workers and --threads based on your server's CPU cores and workload.
-gunicorn --bind 0.0.0.0:5000 "backend.app:create_app()" # Using port 5000 to match your Dockerfile
+# --- Set the command to run when the container starts ---
+# Execute the docker-start.sh script instead of directly running app.py
+CMD ["/app/docker-start.sh"]

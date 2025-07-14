@@ -32,9 +32,4 @@ mkdir -p instance
 # Ensure 'gunicorn' is listed in your backend/requirements.txt file.
 echo "Starting Flask server with Gunicorn..."
 # Adjust --workers and --threads based on your server's CPU cores and workload.
-gunicorn --bind 0.0.0.0:5050 "backend.app:create_app()"
-
-# --- Alternative: Starting with Flask's built-in development server (NOT for Production) ---
-# If you absolutely need to use 'flask run' for local testing within Docker, uncomment this.
-# This is less robust for production environments.
-# python -m flask run --host 0.0.0.0 --port 5050
+gunicorn --bind 0.0.0.0:5000 "backend.app:create_app()" # Using port 5000 to match your Dockerfile

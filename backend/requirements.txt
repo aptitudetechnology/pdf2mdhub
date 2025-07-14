@@ -12,3 +12,4 @@ python-magic
 Flask-Migrate
 alembic
 pytest
+gunicorn
