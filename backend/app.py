@@ -222,6 +222,58 @@ def register_routes(app):
         
         return send_from_directory(app.config['UPLOAD_FOLDER'], document.filename, as_attachment=True)
 
+    @app.route('/api/documents/<int:document_id>/markdown', methods=['GET'])
+    def get_document_markdown(document_id):
+        """
+        Serve markdown content for a specific document.
+        This route is called by the frontend viewer.js
+        """
+        # Import Document model here to avoid circular imports
+        from backend.models.document import Document
+        
+        try:
+            logger.info(f"--- START: GET /api/documents/{document_id}/markdown Request ---")
+            
+            # Find the document in the database
+            document = Document.query.get_or_404(document_id)
+            
+            # Check if markdown file exists
+            if not document.markdown_filepath or not os.path.exists(document.markdown_filepath):
+                logger.error(f"Markdown file not found for document {document_id}")
+                return jsonify({
+                    'error': 'Markdown file not found',
+                    'document_id': document_id
+                }), 404
+            
+            # Read and return markdown content
+            try:
+                with open(document.markdown_filepath, 'r', encoding='utf-8') as f:
+                    markdown_content = f.read()
+                
+                logger.info(f"Successfully served markdown for document {document_id}")
+                return jsonify({
+                    'content': markdown_content,
+                    'document_id': document_id,
+                    'filename': document.filename # Use document.filename from DB
+                })
+                
+            except Exception as e:
+                logger.error(f"Error reading markdown file for document {document_id}: {e}")
+                return jsonify({
+                    'error': f'Error reading markdown file: {str(e)}',
+                    'document_id': document_id
+                }), 500
+                
+        except Exception as e:
+            logger.error(f"Error in get_document_markdown for document {document_id}: {e}")
+            return jsonify({
+                'error': f'Internal server error: {str(e)}',
+                'document_id': document_id
+            }), 500
+        finally:
+            logger.info(f"--- END: GET /api/documents/{document_id}/markdown Request ---")
+
+
 # Helper function to check allowed extensions
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
