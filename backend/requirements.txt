@@ -13,3 +13,4 @@ Flask-Migrate
 alembic
 pytest
 gunicorn
+psycopg2
