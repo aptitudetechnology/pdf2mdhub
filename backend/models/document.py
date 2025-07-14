@@ -13,6 +13,7 @@ class Document(db.Model):
     filename = db.Column(db.String(255), nullable=False)
     file_path = db.Column(db.String(500), nullable=False) # Path where the file is stored
     upload_date = db.Column(db.DateTime, default=datetime.utcnow)
+    markdown_filepath = db.Column(db.String(500), nullable=True)
 
     # --- Document status tracking ---
     # e.g., 'uploaded', 'processing_ocr', 'processed', 'failed'
