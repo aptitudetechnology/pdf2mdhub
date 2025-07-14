@@ -28,7 +28,7 @@ build:
 
 run: build
 	@echo "Running Docker container $(CONTAINER_NAME) on port $(APP_PORT)..."
-	docker run -p $(APP_PORT):$(APP_PORT) --name $(CONTAINER_NAME) -d $(IMAGE_NAME)
+	DOCKER_BUILDKIT=0 docker run -p $(APP_PORT):$(APP_PORT) --name $(CONTAINER_NAME) -d $(IMAGE_NAME)
 
 up: build run
 
