@@ -83,3 +83,5 @@ Goal: Display the fetched markdown content (from the existing /api/documents/<do
         Mention the necessary <link> for CSS and <script> for JS for the highlighter library.
 
         Show how to configure the markdown renderer's highlight option.
+
+        keep vanilla js as much as possible
