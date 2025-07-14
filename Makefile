@@ -2,6 +2,7 @@
 IMAGE_NAME = docker_backend
 CONTAINER_NAME = pdf2mdhub_backend
 APP_PORT = 5000
+DOCKERFILE_DIR = docker # <--- NEW: Define the directory where your Dockerfile resides
 
 # Phony targets prevent conflicts with actual files named 'build', 'run', etc.
 .PHONY: build run stop rm clean logs shell help
@@ -22,7 +23,8 @@ help:
 
 build:
 	@echo "Building Docker image $(IMAGE_NAME)..."
-	docker build -t $(IMAGE_NAME) .
+	# MODIFIED: Use -f to specify Dockerfile path and '.' for the build context
+	docker build -t $(IMAGE_NAME) -f $(DOCKERFILE_DIR)/Dockerfile .
 
 run: build
 	@echo "Running Docker container $(CONTAINER_NAME) on port $(APP_PORT)..."
@@ -32,15 +34,15 @@ up: build run
 
 stop:
 	@echo "Stopping Docker container $(CONTAINER_NAME)..."
-	docker stop $(CONTAINER_NAME) || true # '|| true' prevents error if container isn't running
+	docker stop $(CONTAINER_NAME) || true
 
 rm:
 	@echo "Removing Docker container $(CONTAINER_NAME)..."
-	docker rm -f $(CONTAINER_NAME) || true # '-f' forces removal, '|| true' prevents error
+	docker rm -f $(CONTAINER_NAME) || true
 
 clean: stop rm
 	@echo "Cleaning up Docker images..."
-	docker image prune -f # Removes dangling images
+	docker image prune -f
 
 logs:
 	@echo "Displaying logs for $(CONTAINER_NAME)..."
@@ -49,8 +51,3 @@ logs:
 shell:
 	@echo "Getting a shell in container $(CONTAINER_NAME)..."
 	docker exec -it $(CONTAINER_NAME) bash
-
-# You might also add a target for local development setup if you still use venv
-# local-setup:
-# 	@echo "Setting up local environment..."
-# 	./start.sh # Assuming start.sh is designed for local setup
