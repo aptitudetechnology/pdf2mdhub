@@ -1,5 +1,5 @@
 # Use a slim Python base image for a smaller footprint
-FROM python:3.9-slim-buster
+FROM python:3.11-alpine
 
 # Set environment variables
 ENV PYTHONUNBUFFERED 1
