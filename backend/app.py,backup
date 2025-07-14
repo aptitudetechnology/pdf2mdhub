@@ -85,34 +85,12 @@ def register_routes(app):
         
         logger.info("--- START: POST /api/upload Request ---")
         
-        # === ENHANCED DEBUGGING SECTION ===
-        logger.info(f"--- DEBUG: Raw request.form: {dict(request.form)} ---")
-        logger.info(f"--- DEBUG: Raw request.files: {dict(request.files)} ---")
-        
         if 'file' not in request.files:
             return jsonify({'error': 'No file part'}), 400
         
         file = request.files['file']
-        logger.info(f"--- DEBUG: File object: {file} ---")
-        logger.info(f"--- DEBUG: File.filename: {file.filename} ---")
-        
         tags_json = request.form.get('tags')
         title = request.form.get('title')
-        
-        logger.info(f"--- DEBUG: Raw tags_json: {tags_json} ---")
-        logger.info(f"--- DEBUG: Raw title from form: '{title}' (type: {type(title)}) ---")
-        
-        # Title fallback logic
-        if not title or title.strip() == '':
-            # Try to extract from filename
-            if file.filename:
-                title = file.filename.rsplit('.', 1)[0]
-                logger.info(f"--- DEBUG: Using filename-based title: '{title}' ---")
-            else:
-                title = 'Untitled Document'
-                logger.info(f"--- DEBUG: Using fallback title: '{title}' ---")
-        
-        logger.info(f"--- DEBUG: Final title for database: '{title}' ---")
 
         if file.filename == '':
             return jsonify({'error': 'No selected file'}), 400
@@ -127,7 +105,6 @@ def register_routes(app):
                 file.save(pdf_path)
                 logger.info(f"File saved to: {pdf_path}")
 
-                logger.info(f"--- DEBUG: About to create Document with title='{title}' ---")
                 new_document = Document(
                     title=title,
                     filename=final_filename,
@@ -139,7 +116,6 @@ def register_routes(app):
                 if tags_json:
                     try:
                         tags_array = json.loads(tags_json)
-                        logger.info(f"--- DEBUG: Parsed tags_array: {tags_array} ---")
                         for tag_name in tags_array:
                             tag = Tag.query.filter_by(name=tag_name).first()
                             if not tag:
