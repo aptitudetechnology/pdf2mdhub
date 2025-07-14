@@ -20,7 +20,7 @@ def main():
     
     print("Connection successful.")
     
-    expected_tables = {"documents", "tags", "document_tags"}
+    expected_tables = {"document", "tag", "document_tag", "metadata"}
     
     try:
         with conn.cursor() as cur:
