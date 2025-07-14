@@ -20,16 +20,16 @@ RUN apt-get update \
 
 # Copy backend requirements and install Python dependencies
 # Use --no-cache-dir to keep the image smaller
-COPY pdf2md-docs/backend/requirements.txt $APP_HOME/backend/
+COPY backend/requirements.txt $APP_HOME/backend/
 RUN pip install --no-cache-dir -r $APP_HOME/backend/requirements.txt
 
 # Copy the entire backend application
 # The build context is the project root (pdf2md-docs), so we can copy from there
-COPY pdf2md-docs/backend $APP_HOME/backend/
+COPY backend $APP_HOME/backend/
 
 # Copy the frontend static assets and templates (needed for Flask to serve them)
-COPY pdf2md-docs/frontend/static $APP_HOME/frontend/static/
-COPY pdf2md-docs/frontend/templates $APP_HOME/frontend/templates/
+COPY frontend/static $APP_HOME/frontend/static/
+COPY frontend/templates $APP_HOME/frontend/templates/
 
 # --- Install client-side pdf2md library ---
 # The README states "npm install pdf2md" for client-side.
