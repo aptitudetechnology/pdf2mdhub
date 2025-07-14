@@ -10,6 +10,20 @@ npm install pdf2md
 
 sudo apt update
 sudo apt install poppler-utils
+### Prerequisites (Local Development)
+
+Install required system packages:
+```bash
+sudo apt update
+sudo apt install npm poppler-utils
+```
+
+Install the pdf2md library for client-side conversion:
+```bash
+npm install pdf2md
+```
+
+These steps are required for local development and testing. For Docker deployment, these dependencies are handled in the container build process.
 
 ## Quick Start
 
