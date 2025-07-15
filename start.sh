@@ -57,4 +57,4 @@ echo "Starting Flask server..."
 # Add --host 0.0.0.0 to make it accessible from outside localhost.
 # Add --port 5050 if you want a specific port (default is 5000)
 #flask run --host 0.0.0.0 --port 5050
-flask run --host=0.0.0.0 --port=5050 --cert=/ssl/cert.pem --key=/ssl/key.pem
+flask run --host=0.0.0.0 --port=5050 --cert=ssl/cert.pem --key=ssl/key.pem
