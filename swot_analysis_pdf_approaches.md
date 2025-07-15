@@ -1,10 +1,10 @@
 # SWOT Analysis: PDF Processing Approaches
 
-## Option 2: Adapt OpenGovSG Pattern for Browser Use
+## Option 2: Adapt OpenDocSG Pattern for Browser Use
 
 | **Strengths** | **Weaknesses** |
 |---------------|----------------|
-| • Maintains API consistency with OpenGovSG library | • Requires significant code adaptation/rewriting |
+| • Maintains API consistency with OpenDocSG library | • Requires significant code adaptation/rewriting |
 | • Familiar interface for developers who know the library | • May not achieve same quality as original Node.js version |
 | • Keeps same callback pattern and promise structure | • Browser PDF parsing libraries may have different capabilities |
 | • Easier migration path if switching to server-side later | • Potential compatibility issues with complex PDF features |
@@ -13,7 +13,7 @@
 
 | **Opportunities** | **Threats** |
 |-------------------|-------------|
-| • Could contribute browser port back to OpenGovSG community | • OpenGovSG library updates won't automatically benefit this approach |
+| • Could contribute browser port back to OpenDocSG community | • OpenDocSG library updates won't automatically benefit this approach |
 | • Better understanding of PDF processing internals | • Maintenance burden if original library changes significantly |
 | • Potential to optimize for browser-specific use cases | • Browser security restrictions may limit PDF processing capabilities |
 | • Could add browser-specific features like drag-and-drop | • Performance may be inferior to native Node.js implementation |
@@ -21,16 +21,16 @@
 
 ---
 
-## Option 3: Hybrid Approach (OpenGovSG Interface + Browser Implementation)
+## Option 3: Hybrid Approach (OpenDocSG Interface + Browser Implementation)
 
 | **Strengths** | **Weaknesses** |
 |---------------|----------------|
 | • Best of both worlds - familiar API with browser optimization | • More complex architecture to maintain |
 | • Can leverage proven PDF.js for reliable text extraction | • Potential inconsistencies between interface and implementation |
-| • Maintains OpenGovSG callback/promise pattern | • May confuse developers expecting exact OpenGovSG behavior |
+| • Maintains OpenDocSG callback/promise pattern | • May confuse developers expecting exact OpenDocSG behavior |
 | • Better browser performance than direct adaptation | • Requires more initial development time |
 | • Easier to test and debug in browser environment | • Documentation becomes more complex |
-| • Can add browser-specific enhancements seamlessly | • Risk of feature drift from original OpenGovSG library |
+| • Can add browser-specific enhancements seamlessly | • Risk of feature drift from original OpenDocSG library |
 
 | **Opportunities** | **Threats** |
 |-------------------|-------------|
@@ -46,9 +46,9 @@
 ## Recommendation Summary
 
 **Option 2** is better if:
-- You want maximum compatibility with existing OpenGovSG workflows
+- You want maximum compatibility with existing OpenDocSG workflows
 - You plan to potentially move to server-side processing later
-- You have specific requirements that match OpenGovSG's feature set
+- You have specific requirements that match OpenDocSG's feature set
 - You want to contribute back to the open-source community
 
 **Option 3** is better if:
@@ -64,7 +64,7 @@
 | **Strengths** | **Weaknesses** |
 |---------------|----------------|
 | • Can run actual Node.js code in browser | • Requires WebContainer runtime (large bundle size) |
-| • Direct use of OpenGovSG library without modification | • Limited browser support (modern browsers only) |
+| • Direct use of OpenDocSG library without modification | • Limited browser support (modern browsers only) |
 | • No API changes or adaptations needed | • Potential performance overhead |
 | • Full Node.js ecosystem available | • Complex setup and configuration |
 | • Exact same behavior as server-side implementation | • May have security/sandbox limitations |
@@ -86,7 +86,7 @@
 |---------------|----------------|
 | • Can bundle Node.js libraries for browser use | • Not all Node.js libraries can be successfully bundled |
 | • Familiar development workflow | • Bundle size can become very large |
-| • Can use existing OpenGovSG library with minimal changes | • May require extensive polyfill configuration |
+| • Can use existing OpenDocSG library with minimal changes | • May require extensive polyfill configuration |
 | • Better performance than web containers | • Debugging bundled code can be challenging |
 | • Works in all modern browsers | • Build process complexity increases |
 | • No runtime dependencies | • Some Node.js features may not work properly |
@@ -103,7 +103,7 @@
 
 ## Updated Recommendation Summary
 
-**Option 2 (Adapt OpenGovSG)** - Best for learning and contributing back
+**Option 2 (Adapt OpenDocSG)** - Best for learning and contributing back
 **Option 3 (Hybrid with PDF.js)** - Best for reliability and maintainability  
 **Option 4 (Web Containers)** - Best for exact Node.js compatibility
 **Option 5 (Bundlers)** - Best for performance with familiar tooling
@@ -112,7 +112,7 @@
 
 | Priority | Best Option |
 |----------|-------------|
-| **Exact OpenGovSG compatibility** | Option 4 (Web Containers) |
+| **Exact OpenDocSG compatibility** | Option 4 (Web Containers) |
 | **Performance & reliability** | Option 3 (Hybrid) |
 | **Familiar development workflow** | Option 5 (Bundlers) |
 | **Learning & contribution** | Option 2 (Adapt) |
