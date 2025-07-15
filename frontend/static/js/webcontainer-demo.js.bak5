@@ -2,7 +2,6 @@
 // This file demonstrates WebContainer API usage for PDF2MD integration
 
 // Using the latest known stable version of WebContainer API.
-// The previously suggested 1.6.2 was not found, reverting to 1.6.1.
 // Check https://webcontainers.io/ for potential newer versions if issues persist.
 import { WebContainer } from 'https://cdn.jsdelivr.net/npm/@webcontainer/api@1.6.1/+esm';
 
@@ -35,7 +34,7 @@ class WebContainerDemo {
 
         // File operations
         document.getElementById('createFileBtn').addEventListener('click', () => this.createTestFile());
-        document.getElementById('readFileBtn').addEventListener(() => this.readTestFile());
+        document.getElementById('readFileBtn').addEventListener('click', () => this.readTestFile());
         document.getElementById('createPackageBtn').addEventListener('click', () => this.createPackageJson());
         document.getElementById('installDepsBtn').addEventListener('click', () => this.installDependencies());
 
@@ -70,7 +69,7 @@ class WebContainerDemo {
             
         } catch (error) {
             this.showStatus('initStatus', `Failed to initialize: ${error.message}`, 'error');
-            console.error('WebContainer initialization failed:', error); 
+            console.error('WebContainer initialization failed:', error); // This error should still show in browser console
         }
     }
 
@@ -119,13 +118,15 @@ Current Directory: ${await this.getCurrentDirectory()}
             this.appendOutput('commandOutput', `$ ${fullCommand}\n`);
             
             const process = await this.webContainer.spawn(command, args);
+            // readProcessOutput now handles its own decoding errors and appends to commandOutput
             const output = await this.readProcessOutput(process); 
             
             this.appendOutput('commandOutput', output + '\n');
             
         } catch (error) {
+            // This catch will only hit if readProcessOutput re-throws the error
             this.appendOutput('commandOutput', `Error: ${error.message}\n`);
-            console.error(`Error running command '${command}':`, error);
+            console.error(`Error running command '${command}':`, error); // Log to browser console if possible
         }
     }
 
@@ -152,23 +153,25 @@ Current Directory: ${await this.getCurrentDirectory()}
                 const { done, value } = await reader.read();
                 if (done) break;
                 
-                // --- MODIFIED HERE: Directly append 'value' if it's a string ---
-                if (typeof value === 'string') {
-                    output += value;
-                } else if (value instanceof Uint8Array) {
-                    // Fallback for expected Uint8Array, though current debugging shows it's a string
+                // --- CRITICAL DEBUGGING & CONDITIONAL DECODING HERE ---
+                if (value instanceof Uint8Array) {
                     try {
                         output += new TextDecoder().decode(value);
                     } catch (decodeError) {
-                        const debugInfo = `\n[DEBUG: TextDecoder error on Uint8Array. Error: ${decodeError.message}. Length: ${value.byteLength}]\n`;
-                        console.error("DEBUG: TextDecoder error on Uint8Array:", decodeError, value);
+                        // This catch would be for malformed Uint8Array, less likely but possible.
+                        const debugInfo = `\n[DEBUG: TextDecoder error on valid Uint8Array. Error: ${decodeError.message}. Length: ${value.byteLength}]\n`;
+                        console.error("DEBUG: TextDecoder error on valid Uint8Array:", decodeError, value); // Still try to log to browser console
                         this.appendOutput('commandOutput', debugInfo);
+                        // Do not re-throw here unless you want process to halt completely.
+                        // For now, we'll append the error info and continue if possible.
                     }
                 } else {
-                    // Log any other unexpected types
-                    const debugInfo = `\n[DEBUG: readProcessOutput detected unexpected 'value'. Type: ${typeof value}. Value: ${String(value)}]\n`;
-                    console.error("DEBUG: readProcessOutput unexpected value:", value);
+                    // This is the main scenario we're debugging: 'value' is NOT a Uint8Array
+                    const debugInfo = `\n[DEBUG: readProcessOutput detected problematic 'value'. Type: ${typeof value}. Value: ${String(value)}]\n`;
+                    console.error("DEBUG: readProcessOutput non-Uint8Array value:", value); // Still try to log to browser console
                     this.appendOutput('commandOutput', debugInfo);
+                    // If you want the process to explicitly fail here, you would throw.
+                    // For debugging, we'll just log and continue to see other output.
                 }
             }
         } finally {
@@ -259,21 +262,21 @@ Container can read and write files in memory.`;
                     const { done, value } = await reader.read();
                     if (done) break;
                     
-                    // --- MODIFIED HERE: Directly append 'value' if it's a string ---
-                    if (typeof value === 'string') {
-                        this.appendOutput('fileOutput', value);
-                    } else if (value instanceof Uint8Array) {
+                    // --- DEBUGGING & CONDITIONAL DECODING HERE for npm install specific issues ---
+                    if (value instanceof Uint8Array) {
                         try {
                             const output = new TextDecoder().decode(value);
                             this.appendOutput('fileOutput', output);
                         } catch (decodeError) {
+                            // This catch would be for malformed Uint8Array from npm output
                             const debugInfo = `\n[DEBUG: TextDecoder error on npm output (Uint8Array). Error: ${decodeError.message}. Length: ${value.byteLength}]\n`;
-                            console.error("DEBUG: TextDecoder error on npm output (Uint8Array):", decodeError, value);
+                            console.error("DEBUG: TextDecoder error on npm output (Uint8Array):", decodeError, value); // Still try to log to browser console
                             this.appendOutput('fileOutput', debugInfo);
                         }
                     } else {
-                        const debugInfo = `\n[DEBUG: npm install detected unexpected 'value'. Type: ${typeof value}. Value: ${String(value)}]\n`;
-                        console.error("DEBUG: npm install unexpected value:", value);
+                        // npm outputting non-Uint8Array data
+                        const debugInfo = `\n[DEBUG: npm install detected problematic 'value'. Type: ${typeof value}. Value: ${String(value)}]\n`;
+                        console.error("DEBUG: npm install non-Uint8Array value:", value); // Still try to log to browser console
                         this.appendOutput('fileOutput', debugInfo);
                     }
                 }
@@ -286,7 +289,7 @@ Container can read and write files in memory.`;
             
         } catch (error) {
             this.appendOutput('fileOutput', `Error installing dependencies: ${error.message}\n`);
-            console.error("Error in installDependencies outer catch:", error); 
+            console.error("Error in installDependencies outer catch:", error); // Log to browser console if possible
         }
     }
 
@@ -350,7 +353,7 @@ console.log('CONVERSION_COMPLETE');
             
         } catch (error) {
             this.appendOutput('pdfOutput', `Error setting up PDF2MD: ${error.message}\n`);
-            console.error("Error setting up PDF2MD outer catch:", error); 
+            console.error("Error setting up PDF2MD outer catch:", error); // Log to browser console if possible
         }
     }
 
@@ -391,28 +394,24 @@ console.log('CONVERSION_COMPLETE');
                     const { done, value } = await reader.read();
                     if (done) break;
                     
-                    // --- MODIFIED HERE: Directly append 'value' if it's a string ---
-                    if (typeof value === 'string') {
-                        this.appendOutput('pdfOutput', value);
-                        if (value.includes('CONVERSION_COMPLETE')) {
-                            this.showProgress(100);
-                        }
-                    } else if (value instanceof Uint8Array) {
+                    // Apply similar conditional decoding if this part also fails
+                    if (value instanceof Uint8Array) {
                         try {
                             const output = new TextDecoder().decode(value);
                             this.appendOutput('pdfOutput', output);
-                            if (output.includes('CONVERSION_COMPLETE')) {
-                                this.showProgress(100);
-                            }
                         } catch (decodeError) {
                             const debugInfo = `\n[DEBUG: TextDecoder error on PDF conversion script output (Uint8Array). Error: ${decodeError.message}]\n`;
                             console.error("DEBUG: PDF conversion script output decode error:", decodeError, value);
                             this.appendOutput('pdfOutput', debugInfo);
                         }
                     } else {
-                        const debugInfo = `\n[DEBUG: PDF conversion script output detected unexpected 'value'. Type: ${typeof value}. Value: ${String(value)}]\n`;
-                        console.error("DEBUG: PDF conversion script output unexpected value:", value);
+                        const debugInfo = `\n[DEBUG: PDF conversion script output detected problematic 'value'. Type: ${typeof value}. Value: ${String(value)}]\n`;
+                        console.error("DEBUG: PDF conversion script output non-Uint8Array value:", value);
                         this.appendOutput('pdfOutput', debugInfo);
+                    }
+                    
+                    if (output.includes('CONVERSION_COMPLETE')) {
+                        this.showProgress(100);
                     }
                 }
             } finally {
@@ -430,7 +429,7 @@ console.log('CONVERSION_COMPLETE');
             
         } catch (error) {
             this.appendOutput('pdfOutput', `Conversion error: ${error.message}\n`);
-            console.error("Error in convertPdf outer catch:", error); 
+            console.error("Error in convertPdf outer catch:", error); // Log to browser console if possible
         }
     }
 
@@ -453,12 +452,12 @@ console.log('CONVERSION_COMPLETE');
             for (const [cmd, args] of commands) {
                 try {
                     const process = await this.webContainer.spawn(cmd, args);
-                    // This calls readProcessOutput, which now handles its own type checking
+                    // This calls readProcessOutput, so the debugging added there will apply
                     const output = await this.readProcessOutput(process); 
                     this.appendOutput('sysOutput', `${cmd} ${args.join(' ')}: ${output}\n`);
                 } catch (error) {
                     this.appendOutput('sysOutput', `${cmd}: ${error.message}\n`);
-                    console.error(`Error getting system info for command '${cmd}':`, error);
+                    console.error(`Error getting system info for command '${cmd}':`, error); // Log to browser console
                 }
             }
             
@@ -466,7 +465,7 @@ console.log('CONVERSION_COMPLETE');
             
         } catch (error) {
             this.appendOutput('sysOutput', `Error getting system info: ${error.message}\n`);
-            console.error("Error in getSystemInfo outer catch:", error); 
+            console.error("Error in getSystemInfo outer catch:", error); // Log to browser console
         }
     }
 
