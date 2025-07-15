@@ -3,7 +3,7 @@
 
 // Using the latest known stable version of WebContainer API.
 // Check https://webcontainers.io/ for potential newer versions if issues persist.
-import { WebContainer } from 'https://cdn.jsdelivr.net/npm/@webcontainer/api@1.6.2/+esm';
+import { WebContainer } from 'https://cdn.jsdelivr.net/npm/@webcontainer/api@1.6.1/+esm';
 
 
 class WebContainerDemo {
