@@ -14,3 +14,4 @@ alembic
 pytest
 gunicorn
 psycopg2-binary
+pyopenssl
