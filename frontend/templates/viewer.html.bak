@@ -1,24 +1,21 @@
 {% extends "base.html" %}
 
-{% block title %}Document Viewer - {{ document.original_name }}{% endblock %} {# Corrected from document.title #}
+{% block title %}Document Viewer - {{ document.original_name }}{% endblock %}
 
 {% block head %}
     {{ super() }}
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    {# REMOVE THIS LINE: #}
+    {# REMOVE THIS LINE: <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> #}
     <script src="{{ url_for('static', filename='js/viewer.js') }}"></script>
 {% endblock %}
 
 {% block content %}
-<div id="viewer-container" class="main-content-area viewer-grid" data-document-id="{{ document.id }}">
+<div id="viewer-container" class="main-content-area viewer-grid" data-document-id="{{ document.id }}" data-original-name="{{ document.original_name }}">
     <header class="viewer-header">
-        <h2>Document: {{ document.original_name }}</h2> {# Corrected from document.title #}
+        <h2>Document: {{ document.original_name }}</h2>
         <div id="toolbar" class="viewer-toolbar">
-            {# Direct link to API for PDF download #}
             <a href="/api/documents/{{ document.id }}/download" class="button secondary-button" id="download-pdf-btn" download="{{ document.original_name }}">Download PDF</a>
-            
-            {# Button to trigger Markdown download via JS #}
             <button class="button secondary-button" id="download-markdown-btn">Download Markdown</button>
-            
             <button class="button secondary-button" id="edit-metadata-btn">Edit Details</button>
             <button class="button danger-button" id="delete-document-btn" data-document-id="{{ document.id }}">Delete Document</button>
         </div>
@@ -27,7 +24,7 @@
     <div id="split-pane" class="split-pane">
         <div class="pane pdf-pane">
             <h3 class="pane-title">Original PDF</h3>
-            {% if document.file_path %} {# Check if file_path exists in the document object #}
+            {% if document.file_path %}
                 <iframe id="pdf-viewer" src="/api/documents/{{ document.id }}/download" title="PDF Viewer" frameborder="0">
                     PDF not available or still processing.
                 </iframe>
@@ -38,13 +35,11 @@
         <div class="pane markdown-pane">
             <h3 class="pane-title">Converted Markdown</h3>
             <div id="markdown-viewer" class="markdown-body">
-                {# Markdown content will be loaded and rendered by viewer.js #}
                 <div class="viewer-placeholder" id="markdown-placeholder">Loading Markdown content...</div>
             </div>
         </div>
     </div>
 
-    {# Include the metadata block #}
     {% include "components/metadata_block.html" %}
 
     <section id="comments-section" class="comments-section">
@@ -54,9 +49,6 @@
     </section>
 </div>
 
-{# Hidden input to easily retrieve document ID in JavaScript #}
 <input type="hidden" id="documentId" value="{{ document.id }}">
 
-{# Local JavaScript file to handle dynamic content and interactions #}
-{# The script src for Marked.js is already in the head block #}
 {% endblock %}

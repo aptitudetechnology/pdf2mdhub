@@ -1,14 +1,20 @@
 {% extends "base.html" %}
-
 {% block title %}Document Viewer - {{ document.original_name }}{% endblock %}
-
 {% block head %}
-    {{ super() }}
-    {# REMOVE THIS LINE: #}
-    {# REMOVE THIS LINE: <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script> #}
-    <script src="{{ url_for('static', filename='js/viewer.js') }}"></script>
+ {{ super() }}
+ {# Include MarkdownIt library #}
+ <script src="https://cdn.jsdelivr.net/npm/markdown-it@13.0.1/dist/markdown-it.min.js"></script>
+ {# Include Highlight.js for syntax highlighting #}
+ <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/default.min.css">
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+ {# Optional: Add popular MarkdownIt plugins if needed #}
+ {# <script src="https://cdn.jsdelivr.net/npm/markdown-it-table@2.0.0/dist/markdown-it-table.min.js"></script> #}
+ {# <script src="https://cdn.jsdelivr.net/npm/markdown-it-footnote@3.0.3/dist/markdown-it-footnote.min.js"></script> #}
+ {# <script src="https://cdn.jsdelivr.net/npm/markdown-it-task-lists@2.1.1/dist/markdown-it-task-lists.min.js"></script> #}
+ 
+ {# Your document viewer script #}
+ <script src="{{ url_for('static', filename='js/document-viewer.js') }}"></script>
 {% endblock %}
-
 {% block content %}
 <div id="viewer-container" class="main-content-area viewer-grid" data-document-id="{{ document.id }}" data-original-name="{{ document.original_name }}">
     <header class="viewer-header">
@@ -20,7 +26,7 @@
             <button class="button danger-button" id="delete-document-btn" data-document-id="{{ document.id }}">Delete Document</button>
         </div>
     </header>
-
+    
     <div id="split-pane" class="split-pane">
         <div class="pane pdf-pane">
             <h3 class="pane-title">Original PDF</h3>
@@ -32,16 +38,20 @@
                 <div class="viewer-placeholder">PDF file not found on server or link broken.</div>
             {% endif %}
         </div>
+        
         <div class="pane markdown-pane">
             <h3 class="pane-title">Converted Markdown</h3>
-            <div id="markdown-viewer" class="markdown-body">
-                <div class="viewer-placeholder" id="markdown-placeholder">Loading Markdown content...</div>
+            <div id="markdown-viewer" class="markdown-body" style="display: none;">
+                <!-- Markdown content will be rendered here by JavaScript -->
+            </div>
+            <div class="viewer-placeholder" id="markdown-placeholder" style="display: block;">
+                Loading Markdown content...
             </div>
         </div>
     </div>
-
+    
     {% include "components/metadata_block.html" %}
-
+    
     <section id="comments-section" class="comments-section">
         <h3>Comments/Notes</h3>
         <textarea id="document-notes" class="text-input" placeholder="Add your notes here...">{{ document.notes if document.notes else '' }}</textarea>
@@ -49,6 +59,5 @@
     </section>
 </div>
 
-<input type="hidden" id="documentId" value="{{ document.id }}">
-
+{# Hidden input is redundant since data is in viewer-container data attributes #}
 {% endblock %}
