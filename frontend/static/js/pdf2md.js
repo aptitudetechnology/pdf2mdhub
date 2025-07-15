@@ -4,7 +4,7 @@
 // Install these dependencies:
 // npm install @webcontainer/api buffer
 
-import { WebContainer } from '@webcontainer/api';
+//import { WebContainer } from '@webcontainer/api';
 import { Buffer } from 'buffer'; // Required for Buffer operations in the browser
 
 class PDF2MDProcessor {
