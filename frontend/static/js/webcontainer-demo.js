@@ -216,21 +216,21 @@ Container can read and write files in memory.`;
             return;
         }
 
+        // UPDATED: Removed "type": "module" to use CommonJS by default
         const packageJson = {
             "name": "pdf2md-container",
             "version": "1.0.0",
-            //"type": "module",
             "dependencies": {
                 "@opendocsg/pdf2md": "latest"
             }
         };
 
         try {
-            await this.webContainer.fs.writeFile('/package.json', JSON.stringify(packageJson, null, 2));
+            await this.webContainer.fs.writeFile('package.json', JSON.stringify(packageJson, null, 2));
             this.appendOutput('fileOutput', 'Created package.json for PDF2MD!\n');
             
             // Also show the content
-            const content = await this.webContainer.fs.readFile('/package.json', 'utf-8');
+            const content = await this.webContainer.fs.readFile('package.json', 'utf-8');
             this.appendOutput('fileOutput', `Package.json content:\n${content}\n\n`);
             
         } catch (error) {
@@ -295,6 +295,11 @@ Container can read and write files in memory.`;
         try {
             this.appendOutput('pdfOutput', 'Setting up PDF2MD environment...\n');
             
+            // Get current working directory for debugging
+            const pwdProcess = await this.webContainer.spawn('pwd');
+            const currentDir = (await this.readProcessOutput(pwdProcess)).trim();
+            this.appendOutput('pdfOutput', `DEBUG: Current working directory: ${currentDir}\n`);
+            
             // Create package.json if it doesn't exist
             await this.createPackageJson();
             
@@ -303,81 +308,111 @@ Container can read and write files in memory.`;
             const process = await this.webContainer.spawn('npm', ['install']);
             await process.exit; // Wait for npm install to finish
             
-            // Create a conversion script that uses the actual PDF2MD library
+            // UPDATED: Create a conversion script using relative paths and better error handling
             const conversionScript = `
 const fs = require('fs');
 const path = require('path');
 
+console.log('=== PDF2MD Conversion Script Started ===');
+console.log('Current working directory:', process.cwd());
+console.log('Node.js version:', process.version);
+console.log('Arguments:', process.argv);
+
 async function convertPdf() {
     try {
-        // Import the PDF2MD library
-        const { pdf2md } = await import('@opendocsg/pdf2md');
+        console.log('Step 1: Checking if input file exists...');
         
-        console.log('PDF2MD library loaded successfully');
-        console.log('Input file: /input.pdf');
-        console.log('Output file: /output.md');
+        // Check if input file exists
+        if (!fs.existsSync('input.pdf')) {
+            throw new Error('Input file input.pdf not found in current directory');
+        }
+        
+        const inputStats = fs.statSync('input.pdf');
+        console.log(\`Step 2: Input file found - size: \${inputStats.size} bytes\`);
+        
+        // Import the PDF2MD library
+        console.log('Step 3: Loading PDF2MD library...');
+        const { pdf2md } = await import('@opendocsg/pdf2md');
+        console.log('Step 4: PDF2MD library loaded successfully');
         
         // Read the PDF file as buffer
-        const pdfBuffer = fs.readFileSync('/input.pdf');
-        console.log(\`Read PDF buffer: \${pdfBuffer.length} bytes\`);
+        console.log('Step 5: Reading PDF file...');
+        const pdfBuffer = fs.readFileSync('input.pdf');
+        console.log(\`Step 6: PDF buffer read successfully - \${pdfBuffer.length} bytes\`);
         
         // Convert PDF to markdown using the actual library
-        console.log('Starting PDF to markdown conversion...');
+        console.log('Step 7: Starting PDF to markdown conversion...');
         const markdown = await pdf2md(pdfBuffer);
+        console.log(\`Step 8: Conversion completed - markdown length: \${markdown.length} characters\`);
         
         // Write the converted markdown to output file
-        fs.writeFileSync('/output.md', markdown);
-        console.log('Conversion completed successfully');
-        console.log('CONVERSION_COMPLETE');
+        console.log('Step 9: Writing output file...');
+        fs.writeFileSync('output.md', markdown);
+        console.log('Step 10: Output file written successfully');
+        
+        console.log('=== CONVERSION_COMPLETE ===');
         
     } catch (error) {
-        console.error('Conversion error:', error.message);
-        console.error('Stack trace:', error.stack);
+        console.error('=== CONVERSION_ERROR ===');
+        console.error('Error type:', error.constructor.name);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+        
+        // List current directory contents for debugging
+        try {
+            const files = fs.readdirSync('.');
+            console.log('Current directory contents:', files);
+        } catch (listError) {
+            console.error('Could not list directory contents:', listError.message);
+        }
         
         // Write error info to output file for debugging
         const errorOutput = \`# PDF Conversion Error
 
 An error occurred during PDF to Markdown conversion:
 
-**Error:** \${error.message}
+**Error Type:** \${error.constructor.name}
+**Error Message:** \${error.message}
+
+**Current Directory:** \${process.cwd()}
+**Node.js Version:** \${process.version}
 
 **Stack Trace:**
 \\\`\\\`\\\`
 \${error.stack}
 \\\`\\\`\\\`
 
+**Environment Info:**
+- Working Directory: \${process.cwd()}
+- Input File Check: \${fs.existsSync('input.pdf') ? 'EXISTS' : 'NOT FOUND'}
+
 Please check the console for more details.
 \`;
-        fs.writeFileSync('/output.md', errorOutput);
+        
+        try {
+            fs.writeFileSync('output.md', errorOutput);
+            console.log('Error details written to output.md');
+        } catch (writeError) {
+            console.error('Could not write error file:', writeError.message);
+        }
     }
 }
 
 // Run the conversion
-convertPdf();
+convertPdf().then(() => {
+    console.log('Script execution completed');
+}).catch(err => {
+    console.error('Unhandled error in script:', err);
+});
 `;
 
-            await this.webContainer.fs.writeFile('/convert.js', conversionScript);
-            this.appendOutput('pdfOutput', 'Created /convert.js\n'); 
+            // UPDATED: Write to current directory instead of root
+            await this.webContainer.fs.writeFile('convert.js', conversionScript);
+            this.appendOutput('pdfOutput', 'Created convert.js in current directory\n'); 
             
-            // Verify file exists and its content after writing
-            try {
-                const lsCheck = await this.webContainer.spawn('ls', ['-la', '/']);
-                const lsOutput = await this.readProcessOutput(lsCheck);
-                this.appendOutput('pdfOutput', `\nls -la / output:\n${lsOutput}\n`); 
-                if (!lsOutput.includes('convert.js')) {
-                    this.appendOutput('pdfOutput', 'ERROR: convert.js not found in root after creation attempt!\n');
-                } else {
-                    this.appendOutput('pdfOutput', 'SUCCESS: convert.js verified in root.\n'); 
-                }
-
-                const catCheck = await this.webContainer.spawn('cat', ['/convert.js']);
-                const catOutput = await this.readProcessOutput(catCheck);
-                this.appendOutput('pdfOutput', `\nContent of /convert.js:\n${catOutput.substring(0, 200)}...\n`); 
-            } catch (checkError) {
-                this.appendOutput('pdfOutput', `Error verifying /convert.js: ${checkError.message}\n`); 
-            }
-
-
+            // UPDATED: Enhanced verification with multiple approaches
+            await this.debugFileSystem();
+            
             this.appendOutput('pdfOutput', 'PDF2MD environment setup complete!\n');
             document.getElementById('convertPdfBtn').disabled = false;
             
@@ -387,7 +422,46 @@ convertPdf();
         }
     }
 
-    // Helper method to verify file existence
+    // UPDATED: Enhanced debugging method
+    async debugFileSystem() {
+        try {
+            this.appendOutput('pdfOutput', '\n=== FILE SYSTEM DEBUG ===\n');
+            
+            // List root directory
+            const lsRootProcess = await this.webContainer.spawn('ls', ['-la', '/']);
+            const lsRootOutput = await this.readProcessOutput(lsRootProcess);
+            this.appendOutput('pdfOutput', `Root directory (/):\n${lsRootOutput}\n`);
+            
+            // List current directory
+            const lsCwdProcess = await this.webContainer.spawn('ls', ['-la', '.']);
+            const lsCwdOutput = await this.readProcessOutput(lsCwdProcess);
+            this.appendOutput('pdfOutput', `Current directory (.):\n${lsCwdOutput}\n`);
+            
+            // Try to read convert.js content
+            try {
+                const convertContent = await this.webContainer.fs.readFile('convert.js', 'utf-8');
+                this.appendOutput('pdfOutput', `✓ convert.js exists and readable (${convertContent.length} characters)\n`);
+            } catch (readError) {
+                this.appendOutput('pdfOutput', `✗ Error reading convert.js: ${readError.message}\n`);
+            }
+            
+            // Check if we can execute node directly
+            try {
+                const nodeTestProcess = await this.webContainer.spawn('node', ['--version']);
+                const nodeVersion = await this.readProcessOutput(nodeTestProcess);
+                this.appendOutput('pdfOutput', `✓ Node.js accessible: ${nodeVersion.trim()}\n`);
+            } catch (nodeError) {
+                this.appendOutput('pdfOutput', `✗ Node.js not accessible: ${nodeError.message}\n`);
+            }
+            
+            this.appendOutput('pdfOutput', '=== END FILE SYSTEM DEBUG ===\n\n');
+            
+        } catch (debugError) {
+            this.appendOutput('pdfOutput', `Debug error: ${debugError.message}\n`);
+        }
+    }
+
+    // Helper method to verify file existence - UPDATED for relative paths
     async verifyFileExists(filePath) {
         try {
             const content = await this.webContainer.fs.readFile(filePath, 'utf-8');
@@ -416,77 +490,126 @@ convertPdf();
         let outputAccumulated = ''; // To collect all output for the CONVERSION_COMPLETE check
 
         try {
+            this.appendOutput('pdfOutput', `\n=== STARTING CONVERSION ===\n`);
             this.appendOutput('pdfOutput', `Converting: ${file.name}\n`);
             this.showProgress(0);
+            
+            // UPDATED: Get current working directory for debugging
+            const pwdProcess = await this.webContainer.spawn('pwd');
+            const currentDir = (await this.readProcessOutput(pwdProcess)).trim();
+            this.appendOutput('pdfOutput', `Current working directory: ${currentDir}\n`);
             
             // Read file as ArrayBuffer
             const arrayBuffer = await file.arrayBuffer();
             const buffer = new Uint8Array(arrayBuffer);
             
-            // Write PDF to container
-            await this.webContainer.fs.writeFile('/input.pdf', buffer);
-            this.appendOutput('pdfOutput', 'Created /input.pdf\n'); 
+            // UPDATED: Write PDF to current directory instead of root
+            await this.webContainer.fs.writeFile('input.pdf', buffer);
+            this.appendOutput('pdfOutput', `Created input.pdf (${buffer.length} bytes)\n`); 
             this.showProgress(30);
             
-            // Verify /convert.js exists before running - FIXED: Using helper method
-            const convertJsExists = await this.verifyFileExists('/convert.js');
-            if (!convertJsExists) {
-                throw new Error('Conversion failed: /convert.js not found.');
+            // UPDATED: Verify files exist before running
+            const convertJsExists = await this.verifyFileExists('convert.js');
+            const inputPdfExists = await this.verifyFileExists('input.pdf');
+            
+            if (!convertJsExists || !inputPdfExists) {
+                throw new Error('Required files not found. Check file system debug output above.');
             }
 
-            // Run conversion script, explicitly setting the current working directory to root
+            // UPDATED: Run conversion script with better error handling and debugging
             this.appendOutput('pdfOutput', 'Running conversion script...\n');
-            const process = await this.webContainer.spawn('node', ['/convert.js'], { cwd: '/' });
+            this.showProgress(50);
             
-            const reader = process.output.getReader();
+            // Try multiple approaches to run the script
+            const runAttempts = [
+                { cmd: 'node', args: ['convert.js'], desc: 'node convert.js' },
+                { cmd: 'node', args: ['./convert.js'], desc: 'node ./convert.js' },
+                { cmd: 'node', args: ['-e', 'require("./convert.js")'], desc: 'node -e require' }
+            ];
             
-            try {
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
+            let success = false;
+            
+            for (const attempt of runAttempts) {
+                try {
+                    this.appendOutput('pdfOutput', `\nAttempt: ${attempt.desc}\n`);
                     
-                    if (typeof value === 'string') {
-                        this.appendOutput('pdfOutput', value);
-                        outputAccumulated += value; // Accumulate string output
-                    } else if (value instanceof Uint8Array) {
-                        try {
-                            const outputChunk = new TextDecoder().decode(value);
-                            this.appendOutput('pdfOutput', outputChunk);
-                            outputAccumulated += outputChunk; // Accumulate decoded output
-                        } catch (decodeError) {
-                            const debugInfo = `\n[DEBUG: TextDecoder error on PDF conversion script output (Uint8Array). Error: ${decodeError.message}]\n`;
-                            console.error("DEBUG: PDF conversion script output decode error:", decodeError, value);
-                            this.appendOutput('pdfOutput', debugInfo);
+                    const process = await this.webContainer.spawn(attempt.cmd, attempt.args);
+                    const reader = process.output.getReader();
+                    
+                    let attemptOutput = '';
+                    
+                    try {
+                        while (true) {
+                            const { done, value } = await reader.read();
+                            if (done) break;
+                            
+                            if (typeof value === 'string') {
+                                this.appendOutput('pdfOutput', value);
+                                attemptOutput += value;
+                                outputAccumulated += value;
+                            } else if (value instanceof Uint8Array) {
+                                try {
+                                    const outputChunk = new TextDecoder().decode(value);
+                                    this.appendOutput('pdfOutput', outputChunk);
+                                    attemptOutput += outputChunk;
+                                    outputAccumulated += outputChunk;
+                                } catch (decodeError) {
+                                    const debugInfo = `\n[DEBUG: TextDecoder error - ${decodeError.message}]\n`;
+                                    console.error("DEBUG: TextDecoder error:", decodeError, value);
+                                    this.appendOutput('pdfOutput', debugInfo);
+                                }
+                            }
                         }
-                    } else {
-                        const debugInfo = `\n[DEBUG: PDF conversion script output detected unexpected 'value'. Type: ${typeof value}. Value: ${String(value)}]\n`;
-                        console.error("DEBUG: PDF conversion script output unexpected value:", value);
-                        this.appendOutput('pdfOutput', debugInfo);
+                    } finally {
+                        reader.releaseLock();
                     }
+                    
+                    await process.exit;
+                    
+                    // Check if this attempt succeeded
+                    if (attemptOutput.includes('CONVERSION_COMPLETE')) {
+                        this.appendOutput('pdfOutput', `\n✓ Success with: ${attempt.desc}\n`);
+                        success = true;
+                        break;
+                    } else if (attemptOutput.includes('CONVERSION_ERROR')) {
+                        this.appendOutput('pdfOutput', `\n✗ Conversion error with: ${attempt.desc}\n`);
+                        // Continue to next attempt
+                    } else {
+                        this.appendOutput('pdfOutput', `\n? Unclear result with: ${attempt.desc}\n`);
+                    }
+                    
+                } catch (spawnError) {
+                    this.appendOutput('pdfOutput', `\n✗ Spawn error with ${attempt.desc}: ${spawnError.message}\n`);
+                    // Continue to next attempt
                 }
-            } finally {
-                reader.releaseLock();
             }
             
-            await process.exit;
             this.showProgress(100);
             
-            // Check for CONVERSION_COMPLETE against accumulated output
-            if (outputAccumulated.includes('CONVERSION_COMPLETE')) {
-                this.appendOutput('pdfOutput', '\nConversion script reported completion.\n');
-            } else {
-                this.appendOutput('pdfOutput', '\nWarning: Conversion script did NOT report completion string. Output:\n' + outputAccumulated + '\n');
+            if (!success) {
+                throw new Error('All conversion attempts failed. Check output above for details.');
             }
 
-            // Read converted markdown
-            const markdown = await this.webContainer.fs.readFile('/output.md', 'utf-8');
-            this.appendOutput('pdfOutput', '\n=== CONVERTED MARKDOWN ===\n');
-            this.appendOutput('pdfOutput', markdown);
-            this.appendOutput('pdfOutput', '\n=== END CONVERSION ===\n');
+            // UPDATED: Try to read converted markdown
+            try {
+                const markdown = await this.webContainer.fs.readFile('output.md', 'utf-8');
+                this.appendOutput('pdfOutput', '\n=== CONVERTED MARKDOWN ===\n');
+                this.appendOutput('pdfOutput', markdown.substring(0, 1000)); // Show first 1000 chars
+                if (markdown.length > 1000) {
+                    this.appendOutput('pdfOutput', `\n... (truncated - total length: ${markdown.length} characters)\n`);
+                }
+                this.appendOutput('pdfOutput', '\n=== END CONVERSION ===\n');
+            } catch (readError) {
+                this.appendOutput('pdfOutput', `\n✗ Could not read output.md: ${readError.message}\n`);
+            }
             
         } catch (error) {
-            this.appendOutput('pdfOutput', `Conversion error: ${error.message}\n`);
-            console.error("Error in convertPdf outer catch:", error); 
+            this.appendOutput('pdfOutput', `\n=== CONVERSION FAILED ===\n`);
+            this.appendOutput('pdfOutput', `Error: ${error.message}\n`);
+            console.error("Error in convertPdf:", error);
+            
+            // Additional debugging
+            await this.debugFileSystem();
         }
     }
 
@@ -498,10 +621,11 @@ convertPdf();
 
         try {
             const commands = [
-                ['uname', ['-a']], // This command is not found in WebContainer's default jsh
                 ['node', ['--version']],
                 ['npm', ['--version']],
-                ['ls', ['-la', '/']]
+                ['ls', ['-la', '/']],
+                ['ls', ['-la', '.']],
+                ['pwd', []]
             ];
 
             this.appendOutput('sysOutput', '=== SYSTEM INFORMATION ===\n');
@@ -510,7 +634,7 @@ convertPdf();
                 try {
                     const process = await this.webContainer.spawn(cmd, args);
                     const output = await this.readProcessOutput(process); 
-                    this.appendOutput('sysOutput', `${cmd} ${args.join(' ')}:\n${output}\n`); // Added newline for better formatting
+                    this.appendOutput('sysOutput', `${cmd} ${args.join(' ')}:\n${output}\n`);
                 } catch (error) {
                     this.appendOutput('sysOutput', `${cmd}: ${error.message}\n`);
                     console.error(`Error getting system info for command '${cmd}':`, error);
