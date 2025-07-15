@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block head %}
+    {{ super() }}
+    <title>WebContainer Demo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/webcontainer-demo.css') }}">
+{% endblock %}
+{% block content %}
+<div class="container">
+    <h1>WebContainer Demo</h1>
+    
+    <div class="demo-section">
+        <h3>1. Initialize WebContainer</h3>
+        <p>Start a WebContainer instance to run Node.js in the browser.</p>
+        <button id="initBtn">Initialize WebContainer</button>
+        <button id="teardownBtn" disabled>Teardown Container</button>
+        <div id="initStatus" class="status" style="display: none;"></div>
+    </div>
+
+    <div class="demo-section">
+        <h3>2. Basic Shell Commands</h3>
+        <p>Run simple shell commands in the container.</p>
+        <button id="echoBtn" disabled>Run: echo "Hello World"</button>
+        <button id="lsBtn" disabled>Run: ls -la</button>
+        <button id="nodeVersionBtn" disabled>Run: node --version</button>
+        <button id="npmVersionBtn" disabled>Run: npm --version</button>
+        <div id="commandOutput" class="output">Container not initialized...</div>
+    </div>
+
+    <div class="demo-section">
+        <h3>3. Custom Commands</h3>
+        <p>Enter your own shell commands:</p>
+        <input type="text" id="customCommand" class="command-input" placeholder="Enter command (e.g., echo hello, ls, cat package.json)" disabled>
+        <button id="runCustomBtn" disabled>Run Command</button>
+    </div>
+
+    <div class="demo-section">
+        <h3>4. File System Operations</h3>
+        <p>Create and manipulate files in the container.</p>
+        <button id="createFileBtn" disabled>Create test.txt</button>
+        <button id="readFileBtn" disabled>Read test.txt</button>
+        <button id="createPackageBtn" disabled>Create package.json</button>
+        <button id="installDepsBtn" disabled>Install Dependencies</button>
+        <div id="fileOutput" class="output">No file operations yet...</div>
+    </div>
+
+    <div class="demo-section">
+        <h3>5. PDF2MD Integration Test</h3>
+        <p>Test the PDF2MD library integration (as per instructions).</p>
+        <input type="file" id="pdfFile" class="file-input" accept=".pdf" disabled>
+        <button id="setupPdf2MdBtn" disabled>Setup PDF2MD Environment</button>
+        <button id="convertPdfBtn" disabled>Convert PDF to Markdown</button>
+        <div class="progress-bar" style="display: none;">
+            <div id="progressFill" class="progress-fill"></div>
+        </div>
+        <div id="pdfOutput" class="output">PDF2MD not initialized...</div>
+    </div>
+
+    <div class="demo-section">
+        <h3>6. System Information</h3>
+        <p>Display information about the WebContainer environment.</p>
+        <button id="sysInfoBtn" disabled>Get System Info</button>
+        <div id="sysOutput" class="output">No system info yet...</div>
+    </div>
+</div>
+
+<script type="module" src="{{ url_for('static', filename='js/webcontainer-demo.js') }}"></script>
+{% endblock %}
