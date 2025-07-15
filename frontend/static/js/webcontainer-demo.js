@@ -434,9 +434,9 @@ convertPdf();
                 throw new Error('Conversion failed: /convert.js not found.');
             }
 
-            // Run conversion script
+            // Run conversion script, explicitly setting the current working directory to root
             this.appendOutput('pdfOutput', 'Running conversion script...\n');
-            const process = await this.webContainer.spawn('node', ['/convert.js']);
+            const process = await this.webContainer.spawn('node', ['/convert.js'], { cwd: '/' });
             
             const reader = process.output.getReader();
             
