@@ -3,7 +3,7 @@
 {% block head %}
     {{ super() }}
     <title>WebContainer Demo</title>
-  
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/webcontainer-demo.css') }}">
 {% endblock %}
 {% block content %}
