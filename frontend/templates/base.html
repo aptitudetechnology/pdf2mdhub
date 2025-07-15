@@ -5,9 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF2MD Hub</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <script type="module" src="{{ url_for('static', filename='js/libs/pdf2md-0.2.1/lib/pdf2md.js') }}"></script>
+
+    <script type="importmap">
+    {
+      "imports": {
+        "@webcontainer/api": "https://cdn.jsdelivr.net/npm/@webcontainer/api@latest/dist/index.js",
+        "buffer": "https://cdn.jsdelivr.net/npm/buffer@latest/index.js"
+        // No need to map "@opendocsg/pdf2md" here, as it's used *inside* the webcontainer,
+        // not directly by your browser-side code.
+      }
+    }
+    </script>
+
     <script type="module" src="{{ url_for('static', filename='js/pdf2md.js') }}"></script>
-</head>
+    <script type="module" src="{{ url_for('static', filename='js/upload.js') }}"></script>
+    </head>
 <body>
     <header class="app-header">
         <nav class="main-nav">
