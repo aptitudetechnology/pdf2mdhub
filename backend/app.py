@@ -351,9 +351,9 @@ if __name__ == '__main__':
     logger.info(f"DEBUG: BASE_DIR is set to: {BASE_DIR}")
 
     # Define paths to your SSL certificates
-    CERT_PATH = os.path.join(BASE_DIR, 'cert.pem')
-    KEY_PATH = os.path.join(BASE_DIR, 'key.pem')
-
+    CERT_PATH = os.path.join(PROJECT_ROOT, 'ssl', 'cert.pem')
+    KEY_PATH = os.path.join(PROJECT_ROOT, 'ssl', 'key.pem')
+    
     # Debugging: Print full paths being checked
     logger.info(f"DEBUG: Checking for CERT_PATH: {CERT_PATH}")
     logger.info(f"DEBUG: Checking for KEY_PATH: {KEY_PATH}")
