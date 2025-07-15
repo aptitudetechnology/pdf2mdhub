@@ -354,7 +354,8 @@ app = create_app()
 
 if __name__ == '__main__':
     # Debugging: Print BASE_DIR to confirm it's correct
-    logger.info(f"DEBUG: BASE_DIR is set to: {BASE_DIR}")
+    #logger.info(f"DEBUG: BASE_DIR is set to: {BASE_DIR}")
+    logger.info(f"DEBUG: PROJECT_ROOT is set to: {PROJECT_ROOT}")
 
     # Define paths to your SSL certificates
     CERT_PATH = os.path.join(PROJECT_ROOT, 'ssl', 'cert.pem')
