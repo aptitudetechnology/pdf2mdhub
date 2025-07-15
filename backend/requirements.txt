@@ -15,3 +15,4 @@ pytest
 gunicorn
 psycopg2-binary
 pyopenssl
+gunicorn
