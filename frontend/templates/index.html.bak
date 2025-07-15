@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}PDF2MD Hub{% endblock %}
+
+{% block content %}
+<div class="main-content-area">
+    <h1>Welcome to PDF2MD Hub!</h1>
+    <p>Your solution for converting PDFs to Markdown and managing your documents.</p>
+    <div class="button-group">
+        <a href="{{ url_for('upload_page') }}" class="button primary-button">Upload New PDF</a>
+        <a href="{{ url_for('search_page') }}" class="button secondary-button">View All Documents</a>
+        <a href="{{ url_for('webcontainer_demo.webcontainer_demo') }}" class="button secondary-button">WebContainer Demo</a>
+    </div>
+    
+    <section class="info-section">
+        <h2>How it Works:</h2>
+        <ol>
+            <li><strong>Upload a PDF:</strong> Simply drag and drop your PDF file or select it from your computer.</li>
+            <li><strong>Automatic Conversion:</strong> The system converts your PDF to Markdown in the background.</li>
+            <li><strong>View & Manage:</strong> See the converted content, download the Markdown, add notes, and manage document details.</li>
+        </ol>
+    </section>
+
+    <section class="about-section">
+        <h2>About This Project:</h2>
+        <p>This application demonstrates server-side PDF to Markdown conversion using <code>opendocsg/pdf2md</code> and Flask.</p>
+        <p>It's designed to be a starting point for document management and content extraction.</p>
+    </section>
+</div>
+{%

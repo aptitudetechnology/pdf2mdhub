@@ -47,24 +47,6 @@ def create_app():
     from backend.routes.search import search_bp
     app.register_blueprint(search_bp)
 
-    def create_app():
-    app = Flask(...)
-
-    # ... existing config and db.init_app(app) ...
-
-    # Register blueprints
-    from backend.routes.search import search_bp
-    app.register_blueprint(search_bp)
-
-    # Register your WebContainer demo blueprint here
-    from backend.routes.webcontainer_demo import webcontainer_demo_bp
-    app.register_blueprint(webcontainer_demo_bp)
-
-    # Register other routes
-    register_routes(app)
-
-    return app
-
     # Register routes with the app
     register_routes(app)
     
