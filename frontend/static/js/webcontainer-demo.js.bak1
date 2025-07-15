@@ -1,9 +1,10 @@
 // WebContainer Demo Implementation
 // This file demonstrates WebContainer API usage for PDF2MD integration
 
-// Using the latest known stable version of WebContainer API.
-// Check https://webcontainers.io/ for potential newer versions if issues persist.
-import { WebContainer } from 'https://cdn.jsdelivr.net/npm/@webcontainer/api@1.6.2/+esm';
+//import { WebContainer } from 'https://cdn.jsdelivr.net/npm/@webcontainer/api@1.1.0/dist/index.js';
+
+import { WebContainer } from 'https://cdn.jsdelivr.net/npm/@webcontainer/api@1.6.1/+esm';
+
 
 
 class WebContainerDemo {
@@ -150,28 +151,7 @@ Current Directory: ${await this.getCurrentDirectory()}
                 const { done, value } = await reader.read();
                 if (done) break;
                 
-                try {
-                    output += new TextDecoder().decode(value);
-                } catch (decodeError) {
-                    // --- CRITICAL DEBUGGING HERE ---
-                    console.error("DEBUG: TextDecoder decode error in readProcessOutput:", decodeError);
-                    console.error("DEBUG: Problematic 'value' type:", typeof value);
-                    if (value === null) {
-                        console.error("DEBUG: 'value' is null.");
-                    } else if (value === undefined) {
-                        console.error("DEBUG: 'value' is undefined.");
-                    } else if (value instanceof Uint8Array) {
-                        console.error("DEBUG: 'value' is a Uint8Array. Length:", value.byteLength);
-                        // Log a slice of the Uint8Array to see its raw bytes.
-                        // Be careful with very large outputs, slice it for sanity.
-                        console.error("DEBUG: Uint8Array content (first 50 bytes):", value.slice(0, 50));
-                    } else {
-                        console.error("DEBUG: 'value' is not a Uint8Array or null/undefined. Value:", value);
-                    }
-                    this.appendOutput('commandOutput', `\n[INTERNAL ERROR: Failed to decode WebContainer output. Check console for details.]\n`);
-                    // Re-throw the error to propagate it up and stop execution if the output cannot be processed
-                    throw decodeError; 
-                }
+                output += new TextDecoder().decode(value);
             }
         } finally {
             reader.releaseLock();
@@ -265,7 +245,7 @@ Container can read and write files in memory.`;
                         const output = new TextDecoder().decode(value);
                         this.appendOutput('fileOutput', output);
                     } catch (decodeError) {
-                        // --- ADDED DEBUGGING HERE for npm install specific issues ---
+                        // --- ADD DEBUGGING HERE ---
                         console.error("TextDecoder decode error caught in installDependencies:", decodeError);
                         console.error("Problematic 'value' type:", typeof value);
                         if (value instanceof Uint8Array) {
@@ -306,8 +286,6 @@ Container can read and write files in memory.`;
             
             // Install dependencies
             this.appendOutput('pdfOutput', 'Installing @opendocsg/pdf2md...\n');
-            // NOTE: This call to npm install here might also benefit from progressive output reading
-            // like in installDependencies, if the issue persists here too.
             const process = await this.webContainer.spawn('npm', ['install']);
             await process.exit;
             
@@ -392,8 +370,7 @@ console.log('CONVERSION_COMPLETE');
                     const { done, value } = await reader.read();
                     if (done) break;
                     
-                    // This output path might also need debugging similar to readProcessOutput if it fails here
-                    const output = new TextDecoder().decode(value); 
+                    const output = new TextDecoder().decode(value);
                     this.appendOutput('pdfOutput', output);
                     
                     if (output.includes('CONVERSION_COMPLETE')) {
@@ -437,8 +414,7 @@ console.log('CONVERSION_COMPLETE');
             for (const [cmd, args] of commands) {
                 try {
                     const process = await this.webContainer.spawn(cmd, args);
-                    // This calls readProcessOutput, so the debugging added there will apply
-                    const output = await this.readProcessOutput(process); 
+                    const output = await this.readProcessOutput(process);
                     this.appendOutput('sysOutput', `${cmd} ${args.join(' ')}: ${output}\n`);
                 } catch (error) {
                     this.appendOutput('sysOutput', `${cmd}: ${error.message}\n`);
