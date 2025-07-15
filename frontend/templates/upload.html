@@ -37,5 +37,13 @@
         <button type="submit" class="button success-button">Start Upload & Convert</button>
     </form>
 </div>
+<script type="importmap">
+    {
+      "imports": {
+        "@webcontainer/api": "https://cdn.jsdelivr.net/npm/@webcontainer/api@1.1.0/dist/index.js",
+        "buffer": "https://cdn.jsdelivr.net/npm/buffer@6.0.3/index.js"
+      }
+    }
+  </script>
 <script type="module" src="{{ url_for('static', filename='js/upload.js') }}"></script>
 {% endblock %}
