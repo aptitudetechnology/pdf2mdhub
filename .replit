@@ -1,17 +1,15 @@
 # .replit
 
 modules = ["nodejs-20", "python-3.12", "web", "bash"]
-compile = "make" # If you're not using 'make' explicitly for compilation, you might not need this.
+compile = "make"
 
 [nix]
 channel = "stable-24_05"
-# Add this section to specify system packages
-[nix.packages]
-deps = [
-  "sqlite3", # <--- ADD THIS LINE to install the sqlite3 command-line tool
+
+[nix.deps]
+packages = [
+  "sqlite3", # This line ensures the sqlite3 command-line tool is installed
 ]
 
 [deployment]
-build = ["sh", "-c", "make"] # This seems to be a build step, typically for compiled languages.
-                             # If your project is purely Python, this might not be strictly necessary
-                             # or you might want to adjust it if 'make' isn't used for Python build.
+build = ["sh", "-c", "make"]
