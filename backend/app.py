@@ -31,10 +31,10 @@ def create_app():
                 template_folder=os.path.join(BASE_DIR, '..', 'frontend', 'templates'))
     # Inside create_app()
     @app.after_request
-            def set_headers(response):
-            response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
-            response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
-            return response
+    def set_headers(response): # This line was incorrectly indented
+        response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
+        response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
+        return response
 
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
     app.config['MARKDOWN_FOLDER'] = MARKDOWN_FOLDER
