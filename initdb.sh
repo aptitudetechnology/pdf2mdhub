@@ -1,1 +1,1 @@
-sqlite3 database.db < /db/sqlite3/schema.sql
+sqlite3 database.db < db/sqlite3/schema.sql
