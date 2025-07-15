@@ -219,7 +219,7 @@ Container can read and write files in memory.`;
         const packageJson = {
             "name": "pdf2md-container",
             "version": "1.0.0",
-            "type": "module",
+            //"type": "module",
             "dependencies": {
                 "@opendocsg/pdf2md": "latest"
             }
