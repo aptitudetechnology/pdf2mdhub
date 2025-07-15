@@ -28,17 +28,32 @@ else
     echo "Warning: backend/requirements.txt not found. Skipping dependency installation."
 fi
 
-# --- 3. Create necessary directories if they don't exist ---
+# (Optional) Install Node.js dependencies if needed
+# echo "Installing Node.js dependencies..."
+# npm install
+
+# --- 3. Export Flask app environment variables ---
+# FLASK_APP should be a Python import path, not a file path.
+# Assuming your app factory is `create_app()` in `backend/app.py`
+export FLASK_APP="backend.app:create_app()"
+export FLASK_ENV=development
+
+# PYTHONPATH is already handled by activating the venv and being in SCRIPT_DIR
+# But explicitly adding SCRIPT_DIR is a good safeguard for some complex setups.
+export PYTHONPATH="${SCRIPT_DIR}:$PYTHONPATH"
+
+# --- 4. Create necessary directories if they don't exist ---
 mkdir -p uploads
 mkdir -p instance
 
-# --- 4. Database Migration Step (if using Flask-Migrate) ---
+# --- 5. Database Migration Step (if using Flask-Migrate) ---
 # Ensure your Flask app is properly configured for Flask-Migrate (app.py)
 echo "Applying database migrations (if configured)..."
-# If you're running migrations via Flask-Migrate, you'd uncomment this
-# flask db upgrade 
+#flask db upgrade # Use 'flask' command from venv
 
-# --- 5. Starting Flask server ---
+# --- 6. Starting Flask server ---
 echo "Starting Flask server..."
-# Directly run app.py, which contains the app.run() call with SSL context
-python app.py
+# Use 'flask run' which correctly sets up the application context
+# Add --host 0.0.0.0 to make it accessible from outside localhost.
+# Add --port 5050 if you want a specific port (default is 5000)
+flask run --host 0.0.0.0 --port 5050
