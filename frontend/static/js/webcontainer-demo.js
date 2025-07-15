@@ -1,7 +1,7 @@
 // WebContainer Demo Implementation
 // This file demonstrates WebContainer API usage for PDF2MD integration
 
-#import { WebContainer } from 'https://cdn.jsdelivr.net/npm/@webcontainer/api@1.1.0/dist/index.js';
+//import { WebContainer } from 'https://cdn.jsdelivr.net/npm/@webcontainer/api@1.1.0/dist/index.js';
 
 import { WebContainer } from 'https://cdn.jsdelivr.net/npm/@webcontainer/api@1.6.1/+esm';
 
