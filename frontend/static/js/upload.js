@@ -1,4 +1,8 @@
-// static/js/upload.js
+// static/js/upload.js - Refactored to ES Module Syntax
+
+// Import the PDF2MDProcessor class from pdf2md.js
+// Make sure pdf2md.js is also refactored to export PDF2MDProcessor as a class
+import { PDF2MDProcessor } from './pdf2md.js';
 
 class UploadInterface {
     constructor() {
@@ -16,15 +20,22 @@ class UploadInterface {
         this.filesToUpload = [];
         this.jobStatus = {}; // To track progress for each file/job ID
 
-        // Initialize PDF2MDProcessor (assuming pdf2md.js is loaded globally or imported)
-        // Ensure PDF2MDProcessor is accessible, assuming it's a global instance or singleton
-        if (typeof PDF2MDProcessor === 'undefined') {
-            console.error("PDF2MDProcessor not found. Ensure pdf2md.js is loaded correctly.");
-            // Fallback or error handling, maybe disable functionality
-            this.uploadButton.disabled = true;
-            this.dropZone.removeEventListener('click', () => this.fileInput.click()); // Disable drop zone click
-            return;
+        // Initialize PDF2MDProcessor
+        // The 'typeof PDF2MDProcessor === 'undefined'' check is no longer strictly necessary
+        // because if the import fails, you'll get an immediate module loading error.
+        // However, keeping it as a safeguard if you might load the script in different contexts
+        // or for more explicit error reporting isn't harmful, but typically you'd rely
+        // on the module loader to ensure dependencies are met.
+        // For a pure ES module setup, you can often remove this 'if' block.
+        // For now, let's keep it but understand its diminished necessity.
+        // This check would pass if the import succeeded.
+        if (typeof PDF2MDProcessor === 'undefined') { // This line might become redundant or indicate a deeper issue if import fails
+             console.error("PDF2MDProcessor not found after import attempt. Check pdf2md.js export.");
+             this.uploadButton.disabled = true;
+             this.dropZone.removeEventListener('click', () => this.fileInput.click());
+             return;
         }
+
         this.pdf2mdProcessor = new PDF2MDProcessor();
         this.pdf2mdProcessor.on('progress', this.updateFileProgress.bind(this));
         this.pdf2mdProcessor.on('complete', this.handleFileComplete.bind(this));
@@ -160,7 +171,7 @@ class UploadInterface {
             tagsArray = commonTagsRaw.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
         }
         // Convert the JavaScript array to a JSON string
-        const tagsJsonString = JSON.stringify(tagsArray); 
+        const tagsJsonString = JSON.stringify(tagsArray);
         console.log('Frontend preparing tags (JSON stringified):', tagsJsonString); // For debugging
 
 
@@ -168,7 +179,7 @@ class UploadInterface {
         let totalFiles = this.filesToUpload.length;
 
         // Reset overall progress at the start of a new batch
-        this.updateOverallProgress(0, totalFiles); 
+        this.updateOverallProgress(0, totalFiles);
 
 
         for (const file of this.filesToUpload) {
@@ -189,6 +200,7 @@ class UploadInterface {
                 statusSpan.textContent = 'Converting...';
                 progressBar.value = 10;
 
+                // Make sure pdf2mdProcessor is correctly initialized and has performConversion
                 const markdownContent = await this.pdf2mdProcessor.performConversion(file, jobOptions, fileId);
 
                 statusSpan.textContent = 'Uploading...';
@@ -293,6 +305,9 @@ class UploadInterface {
     }
 }
 
+// Export the UploadInterface class if other modules might import it,
+// though for a main entry point like this, it's often instantiated directly.
+// If you want to ensure it runs immediately, you can keep the DOMContentLoaded listener.
 document.addEventListener('DOMContentLoaded', () => {
     new UploadInterface();
 });
