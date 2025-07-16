@@ -2,9 +2,7 @@
   "name": "pdf2mdhub-frontend",
   "version": "1.0.0",
   "description": "Frontend for PDF2MD Hub",
-  // Ensure "main": "index.js", IS DELETED if you haven't already
   "scripts": {
-    // Change these lines:
     "start": "parcel static/js/src/index.js --dist-dir static/js --public-url /static/js/",
     "build": "parcel build static/js/src/index.js --dist-dir static/js --public-url /static/js/"
   },
