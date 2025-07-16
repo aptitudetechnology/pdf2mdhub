@@ -25,7 +25,7 @@
 
 
 // In your TypeScript files, change from:
-import { PdfParser } from './PdfParser';
+//import { PdfParser } from './PdfParser';
 
 // To:
 import { PdfParser } from '/static/js/libs/pdf-to-markdown/src/PdfParser.js';
