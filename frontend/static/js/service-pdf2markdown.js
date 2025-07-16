@@ -301,7 +301,7 @@ export { DEFAULT_OPTIONS };
 export async function convertPdfWithDebug(pdfBuffer, options = {}) {
   try {
     const config = new Config({ ...DEFAULT_OPTIONS, ...options, debug: true });
-    const debugger = new PdfDebugger(config); // Fixed: use renamed import
+    const pdfDebugger = new PdfDebugger(config); // Fixed: renamed variable to avoid reserved keyword
     
     // Parse with debug tracking
     const parseResult = await parse(pdfBuffer, config);
@@ -311,10 +311,10 @@ export async function convertPdfWithDebug(pdfBuffer, options = {}) {
     
     // Get debug stages information
     const debugInfo = {
-      stages: debugger.getStageResults(),
-      transformations: debugger.getTransformationResults(),
-      statistics: debugger.getStatistics(),
-      performance: debugger.getPerformanceMetrics()
+      stages: pdfDebugger.getStageResults(),
+      transformations: pdfDebugger.getTransformationResults(),
+      statistics: pdfDebugger.getStatistics(),
+      performance: pdfDebugger.getPerformanceMetrics()
     };
     
     return {
