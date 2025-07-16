@@ -145,7 +145,7 @@ class PDFUploader {
                 // Import and use the appropriate service
                 let result;
                 if (conversionMethod === 'opendocsg') {
-                    const { convertWithPdf2md } = await import('service-pdf2md.js');
+                    const { convertWithPdf2md } = await import('./service-pdf2md.js');
                     result = await convertWithPdf2md(file, metadata);
                 } else if (conversionMethod === 'pdf-to-markdown') {
                     const { convertWithPdfToMarkdown } = await import('./service-pdf2markdown.js');
