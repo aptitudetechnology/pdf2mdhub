@@ -1,0 +1,19 @@
+{
+  "name": "js-bundler",
+  "version": "1.0.0",
+  "description": "Bundle pdf-to-markdown JS using esbuild",
+  "main": "build.js",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "simple-statistics": "^7.8.8",
+    "string-similarity": "^4.0.4",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.17.19"
+  }
+}
