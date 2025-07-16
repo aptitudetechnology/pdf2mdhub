@@ -1,42 +1,67 @@
 {% extends "base.html" %}
 {% block content %}
 <div id="upload-container" class="main-content-area">
-    <header class="section-header">
-        <h2>Upload PDF Documents</h2>
-        <p>Drag & drop your PDF files here or click to select them for conversion and management.</p>
-    </header>
+<header class="section-header">
+<h2>Upload PDF Documents</h2>
+<p>Drag & drop your PDF files here or click to select them for conversion and management.</p>
+</header>
 
-    <div id="drop-zone" class="drop-zone">
-        <p class="drop-zone-text">Drag & drop files here</p>
-        <p class="drop-zone-or">or</p>
-        <label for="file-input" class="button primary-button">Select Files</label>
-        <input type="file" id="file-input" multiple accept="application/pdf" style="display: none;">
-    </div>
-
-    <div id="upload-queue" class="upload-queue">
-        <p class="queue-placeholder">No files selected yet.</p>
-    </div>
-
-    <div id="overall-progress-container" class="overall-progress-container hidden">
-        <h4>Overall Upload Progress</h4>
-        <progress id="overall-upload-progress" value="0" max="100"></progress>
-        <span id="overall-progress-text">0%</span>
-    </div>
-
-    <form id="metadata-form" class="metadata-form hidden">
-        <h3>Document Metadata (Optional)</h3>
-        <p class="form-description">Apply tags and a title to all selected documents before uploading.</p>
-        <div class="form-group">
-            <label for="form-tags">Tags (comma separated):</label>
-            <input type="text" id="form-tags" name="tags" placeholder="e.g., invoice, report, legal" class="text-input">
-        </div>
-        <div class="form-group">
-            <label for="form-title">Document Title:</label>
-            <input type="text" id="form-title" name="title" placeholder="e.g., Q3 Financial Report 2024" class="text-input">
-        </div>
-        <button type="submit" class="button success-button">Start Upload & Convert</button>
-    </form>
+<!-- Conversion Method Selection -->
+<div class="conversion-method-section">
+<h3>Choose Conversion Method</h3>
+<div class="method-options">
+<label class="method-option">
+<input type="radio" name="conversion-method" value="opendocsg" checked>
+<div class="method-card">
+<h4>OpenDocSG PDF2MD</h4>
+<p class="method-description">Advanced PDF parsing with better table and layout recognition. Recommended for complex documents.</p>
+<div class="method-features">
+<span class="feature-tag">Tables</span>
+<span class="feature-tag">Layout</span>
+<span class="feature-tag">OCR</span>
+</div>
+</div>
+</label>
+<label class="method-option">
+<input type="radio" name="conversion-method" value="pdf-to-markdown">
+<div class="method-card">
+<h4>PDF-to-Markdown</h4>
+<p class="method-description">Fast and reliable conversion with clean markdown output. Good for text-heavy documents.</p>
+<div class="method-features">
+<span class="feature-tag">Fast</span>
+<span class="feature-tag">Clean</span>
+<span class="feature-tag">Reliable</span>
+</div>
+</div>
+</label>
+</div>
 </div>
 
-<script type="module" src="{{ url_for('static', filename='js/upload.js') }}"></script>
-{% endblock %}
+<div id="drop-zone" class="drop-zone">
+<p class="drop-zone-text">Drag & drop files here</p>
+<p class="drop-zone-or">or</p>
+<label for="file-input" class="button primary-button">Select Files</label>
+<input type="file" id="file-input" multiple accept="application/pdf" style="display: none;">
+</div>
+<div id="upload-queue" class="upload-queue">
+<p class="queue-placeholder">No files selected yet.</p>
+</div>
+<div id="overall-progress-container" class="overall-progress-container hidden">
+<h4>Overall Upload Progress</h4>
+<progress id="overall-upload-progress" value="0" max="100"></progress>
+<span id="overall-progress-text">0%</span>
+</div>
+<form id="metadata-form" class="metadata-form hidden">
+<h3>Document Metadata (Optional)</h3>
+<p class="form-description">Apply tags and a title to all selected documents before uploading.</p>
+<div class="form-group">
+<label for="form-tags">Tags (comma separated):</label>
+<input type="text" id="form-tags" name="tags" placeholder="e.g., invoice, report, legal" class="text-input">
+</div>
+<div class="form-group">
+<label for="form-title">Document Title:</label>
+<input type="text" id="form-title" name="title" placeholder="e.g., Q3 Financial Report 2024" class="text-input">
+</div>
+<button type="submit" class="button success-button">Start Upload & Convert</button>
+</form>
+</div>

@@ -1,11 +1,11 @@
 // PDF2MD Client-Side Processing
-// Integrates with OpenGovSG's pdf2md library for browser-based PDF to Markdown conversion
+// Integrates with OpenDocSG's pdf2md library for browser-based PDF to Markdown conversion
 
 // Install these dependencies:
 // npm install @webcontainer/api buffer
 
-//import { WebContainer } from '@webcontainer/api';
-//import { Buffer } from 'buffer'; // Required for Buffer operations in the browser
+import { WebContainer } from '@webcontainer/api';
+import { Buffer } from 'buffer'; // Required for Buffer operations in the browser
 
 class PDF2MDProcessor {
     constructor(options = {}) {
