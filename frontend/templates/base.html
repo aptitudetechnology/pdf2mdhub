@@ -3,10 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}PDF2MD Hub{% endblock %}</title> {# Added block for title #}
+    <title>PDF2MD Hub</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    {# Any other head elements like favicons, meta tags, etc. #}
-</head>
+
+
+    }
+
+    <script type="module" src="{{ url_for('static', filename='js/upload.js') }}"></script>
+    </head>
 <body>
     <header class="app-header">
         <nav class="main-nav">
@@ -14,7 +18,7 @@
             <ul class="nav-links">
                 <li><a href="{{ url_for('upload_page') }}">Upload</a></li>
                 <li><a href="{{ url_for('search_page') }}">Search</a></li>
-            </ul>
+                </ul>
         </nav>
     </header>
 
@@ -23,17 +27,9 @@
     </main>
 
     <footer class="app-footer">
-        <p>PDF2MD Hub</p>
+        <p> PDF2MD Hub</p>
     </footer>
 
-    {# NEW: This block is for page-specific JavaScript #}
-    {% block scripts %}
-    {#
-        Existing upload.js (moved here for better performance/DOM readiness).
-        If upload.js is truly a module that's imported elsewhere, this might be redundant,
-        but for standalone scripts, placing them at the end of body is standard.
-    #}
-    <script type="module" src="{{ url_for('static', filename='js/upload.js') }}"></script>
-    {% endblock %}
+    
 </body>
 </html>
