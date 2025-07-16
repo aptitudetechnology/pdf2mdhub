@@ -1,313 +1,235 @@
-// static/js/upload.js - Refactored to ES Module Syntax
-
-// Import the PDF2MDProcessor class from pdf2md.js
-// Make sure pdf2md.js is also refactored to export PDF2MDProcessor as a class
-import { PDF2MDProcessor } from './pdf2md.js';
-
-class UploadInterface {
+// Upload.js - Clean implementation with service selection
+class PDFUploader {
     constructor() {
+        this.selectedFiles = [];
+        this.initializeElements();
+        this.attachEventListeners();
+    }
+
+    initializeElements() {
         this.dropZone = document.getElementById('drop-zone');
         this.fileInput = document.getElementById('file-input');
         this.uploadQueue = document.getElementById('upload-queue');
-        this.overallProgressContainer = document.getElementById('overall-progress-container');
-        this.overallProgressBar = document.getElementById('overall-upload-progress');
-        this.overallProgressText = document.getElementById('overall-progress-text');
         this.metadataForm = document.getElementById('metadata-form');
-        this.formTagsInput = document.getElementById('form-tags');
-        this.formTitleInput = document.getElementById('form-title');
-        this.uploadButton = this.metadataForm.querySelector('button[type="submit"]');
-
-        this.filesToUpload = [];
-        this.jobStatus = {}; // To track progress for each file/job ID
-
-        // Initialize PDF2MDProcessor
-        // The 'typeof PDF2MDProcessor === 'undefined'' check is no longer strictly necessary
-        // because if the import fails, you'll get an immediate module loading error.
-        // However, keeping it as a safeguard if you might load the script in different contexts
-        // or for more explicit error reporting isn't harmful, but typically you'd rely
-        // on the module loader to ensure dependencies are met.
-        // For a pure ES module setup, you can often remove this 'if' block.
-        // For now, let's keep it but understand its diminished necessity.
-        // This check would pass if the import succeeded.
-        if (typeof PDF2MDProcessor === 'undefined') { // This line might become redundant or indicate a deeper issue if import fails
-             console.error("PDF2MDProcessor not found after import attempt. Check pdf2md.js export.");
-             this.uploadButton.disabled = true;
-             this.dropZone.removeEventListener('click', () => this.fileInput.click());
-             return;
-        }
-
-        this.pdf2mdProcessor = new PDF2MDProcessor();
-        this.pdf2mdProcessor.on('progress', this.updateFileProgress.bind(this));
-        this.pdf2mdProcessor.on('complete', this.handleFileComplete.bind(this));
-        this.pdf2mdProcessor.on('error', this.handleFileError.bind(this));
-
-        this.setupEventListeners();
+        this.overallProgressContainer = document.getElementById('overall-progress-container');
+        this.overallProgress = document.getElementById('overall-upload-progress');
+        this.overallProgressText = document.getElementById('overall-progress-text');
     }
 
-    setupEventListeners() {
-        // Prevent default drag behaviors
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            this.dropZone.addEventListener(eventName, this.preventDefaults, false);
-            document.body.addEventListener(eventName, this.preventDefaults, false); // Global prevent
-        });
-
-        // Highlight drop zone when item is over it
-        ['dragenter', 'dragover'].forEach(eventName => {
-            this.dropZone.addEventListener(eventName, () => this.dropZone.classList.add('drag-over'), false);
-        });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            this.dropZone.addEventListener(eventName, () => this.dropZone.classList.remove('drag-over'), false);
-        });
-
-        // Handle dropped files
-        this.dropZone.addEventListener('drop', this.handleDrop.bind(this), false);
-
-        // Handle file input change
-        this.fileInput.addEventListener('change', (e) => this.handleFileUpload(e.target.files));
-
-        // Allow click on drop zone to trigger file input
+    attachEventListeners() {
+        // File input change
+        this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+        
+        // Drag and drop
+        this.dropZone.addEventListener('dragover', (e) => this.handleDragOver(e));
+        this.dropZone.addEventListener('drop', (e) => this.handleDrop(e));
         this.dropZone.addEventListener('click', () => this.fileInput.click());
-
-        // Handle form submission for metadata and actual upload
-        this.metadataForm.addEventListener('submit', this.startProcessingAndUpload.bind(this));
+        
+        // Form submission
+        this.metadataForm.addEventListener('submit', (e) => this.handleFormSubmit(e));
     }
 
-    preventDefaults(e) {
-        e.preventDefault();
-        e.stopPropagation();
+    handleFileSelect(event) {
+        const files = Array.from(event.target.files);
+        this.addFiles(files);
     }
 
-    handleDrop(e) {
-        let dt = e.dataTransfer;
-        let files = dt.files;
-        this.handleFileUpload(files);
+    handleDragOver(event) {
+        event.preventDefault();
+        this.dropZone.classList.add('drag-over');
     }
 
-    handleFileUpload(files) {
-        if (files.length === 0) return;
-
-        this.metadataForm.classList.remove('hidden');
-        this.overallProgressContainer.classList.add('hidden'); // Hide overall progress until upload starts
-
-        // Clear previous queue if new files are selected
-        // This assumes single-batch uploads. If you want to add to existing queue, adjust this.
-        this.filesToUpload = [];
-        this.uploadQueue.innerHTML = ''; // Clear existing queue display
-        const queuePlaceholder = this.uploadQueue.querySelector('.queue-placeholder');
-        if (queuePlaceholder) queuePlaceholder.remove();
-        this.uploadQueue.classList.remove('hidden');
-
-
-        Array.from(files).forEach(file => {
-            if (file.type === 'application/pdf') {
-                this.filesToUpload.push(file);
-                this.addFileToQueue(file);
-            } else {
-                alert(`File "${file.name}" is not a PDF and will be skipped.`);
-            }
-        });
-        this.updateUploadButtonState();
-    }
-
-    addFileToQueue(file) {
-        const itemId = `file-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-        const fileItem = document.createElement('div');
-        fileItem.className = 'file-upload-item';
-        fileItem.id = itemId;
-        fileItem.innerHTML = `
-            <span class="file-name">${file.name}</span>
-            <span class="file-status">Ready</span>
-            <progress class="file-progress" value="0" max="100"></progress>
-        `;
-        this.uploadQueue.appendChild(fileItem);
-
-        this.jobStatus[itemId] = {
-            file: file,
-            progress: 0,
-            status: 'Ready',
-            element: fileItem,
-            jobId: itemId // Use itemId as jobId for tracking
-        };
-    }
-
-    updateUploadButtonState() {
-        if (this.filesToUpload.length > 0) {
-            this.uploadButton.textContent = `Start Upload & Convert (${this.filesToUpload.length} files)`;
-            this.uploadButton.disabled = false;
-        } else {
-            this.uploadButton.textContent = 'No Files Selected';
-            this.uploadButton.disabled = true;
-            this.metadataForm.classList.add('hidden');
-            // If the queue is empty, restore the placeholder
-            if (!this.uploadQueue.querySelector('.queue-placeholder')) {
-                const placeholder = document.createElement('p');
-                placeholder.className = 'queue-placeholder';
-                placeholder.textContent = 'No files selected yet.';
-                this.uploadQueue.appendChild(placeholder);
-            }
+    handleDrop(event) {
+        event.preventDefault();
+        this.dropZone.classList.remove('drag-over');
+        
+        const files = Array.from(event.dataTransfer.files).filter(file => 
+            file.type === 'application/pdf'
+        );
+        
+        if (files.length > 0) {
+            this.addFiles(files);
         }
     }
 
-    async startProcessingAndUpload(e) {
-        e.preventDefault();
+    addFiles(files) {
+        // Filter out duplicates
+        const newFiles = files.filter(file => 
+            !this.selectedFiles.some(existingFile => 
+                existingFile.name === file.name && existingFile.size === file.size
+            )
+        );
 
-        if (this.filesToUpload.length === 0) {
-            alert('Please select PDF files to upload.');
+        this.selectedFiles = [...this.selectedFiles, ...newFiles];
+        this.updateFileQueue();
+        this.showMetadataForm();
+    }
+
+    updateFileQueue() {
+        if (this.selectedFiles.length === 0) {
+            this.uploadQueue.innerHTML = '<p class="queue-placeholder">No files selected yet.</p>';
             return;
         }
 
-        this.metadataForm.classList.add('hidden'); // Hide form once upload starts
-        this.overallProgressContainer.classList.remove('hidden');
-        this.uploadButton.disabled = true; // Disable button to prevent re-submission
+        const fileList = this.selectedFiles.map((file, index) => `
+            <div class="file-item" data-index="${index}">
+                <span class="file-name">${file.name}</span>
+                <span class="file-size">${this.formatFileSize(file.size)}</span>
+                <button type="button" class="remove-file" onclick="uploader.removeFile(${index})">×</button>
+            </div>
+        `).join('');
 
-        const commonTagsRaw = this.formTagsInput.value.trim();
-        const commonTitle = this.formTitleInput.value.trim();
+        this.uploadQueue.innerHTML = fileList;
+    }
 
-        // --- FIX: Process Tags for JSON before sending ---
-        let tagsArray = [];
-        if (commonTagsRaw) {
-            // Split by comma, trim whitespace, filter out empty strings
-            tagsArray = commonTagsRaw.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
+    removeFile(index) {
+        this.selectedFiles.splice(index, 1);
+        this.updateFileQueue();
+        
+        if (this.selectedFiles.length === 0) {
+            this.hideMetadataForm();
         }
-        // Convert the JavaScript array to a JSON string
-        const tagsJsonString = JSON.stringify(tagsArray);
-        console.log('Frontend preparing tags (JSON stringified):', tagsJsonString); // For debugging
+    }
 
+    showMetadataForm() {
+        this.metadataForm.classList.remove('hidden');
+    }
 
-        let completedFiles = 0;
-        let totalFiles = this.filesToUpload.length;
+    hideMetadataForm() {
+        this.metadataForm.classList.add('hidden');
+    }
 
-        // Reset overall progress at the start of a new batch
-        this.updateOverallProgress(0, totalFiles);
+    async handleFormSubmit(event) {
+        event.preventDefault();
+        
+        if (this.selectedFiles.length === 0) {
+            alert('Please select at least one PDF file.');
+            return;
+        }
 
+        // Get selected conversion method
+        const conversionMethod = document.querySelector('input[name="conversion-method"]:checked')?.value;
+        if (!conversionMethod) {
+            alert('Please select a conversion method.');
+            return;
+        }
 
-        for (const file of this.filesToUpload) {
-            const fileId = Object.keys(this.jobStatus).find(key => this.jobStatus[key].file === file);
-            if (!fileId) continue;
+        // Get metadata
+        const tags = document.getElementById('form-tags').value.trim();
+        const title = document.getElementById('form-title').value.trim();
 
-            const jobOptions = {
-                preserveImages: true, // Example option, can be dynamic
-                extractTables: true,  // Example option
-                // Any other options you want to pass to pdf2md
-            };
+        // Show progress
+        this.showOverallProgress();
 
-            const itemElement = this.jobStatus[fileId].element;
-            const statusSpan = itemElement.querySelector('.file-status');
-            const progressBar = itemElement.querySelector('.file-progress');
+        try {
+            await this.processFiles(conversionMethod, { tags, title });
+            this.showSuccess();
+        } catch (error) {
+            this.showError(error.message);
+        } finally {
+            this.hideOverallProgress();
+        }
+    }
 
+    async processFiles(conversionMethod, metadata) {
+        const totalFiles = this.selectedFiles.length;
+        
+        for (let i = 0; i < totalFiles; i++) {
+            const file = this.selectedFiles[i];
+            
+            // Update progress
+            const progress = ((i + 1) / totalFiles) * 100;
+            this.updateOverallProgress(progress, `Processing ${file.name}...`);
+            
             try {
-                statusSpan.textContent = 'Converting...';
-                progressBar.value = 10;
-
-                // Make sure pdf2mdProcessor is correctly initialized and has performConversion
-                const markdownContent = await this.pdf2mdProcessor.performConversion(file, jobOptions, fileId);
-
-                statusSpan.textContent = 'Uploading...';
-                progressBar.value = 95;
-
-                // Send the file and markdown content to the backend
-                const formData = new FormData();
-                formData.append('pdf_file', file);
-                formData.append('file', file); // Change 'pdf_file' to 'file'
-                formData.append('markdown_content', markdownContent);
-                formData.append('tags', tagsJsonString); // Append the JSON stringified tags
-                //formData.append('title', commonTitle || file.name.split('.').slice(0, -1).join('.')); // Use file name if no common title
-
-                const response = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData,
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || `HTTP error! Status: ${response.status}`);
+                // Import and use the appropriate service
+                let result;
+                if (conversionMethod === 'opendocsg') {
+                    const { convertWithPdf2md } = await import('./service-pdf2md.js');
+                    result = await convertWithPdf2md(file, metadata);
+                } else if (conversionMethod === 'pdf-to-markdown') {
+                    const { convertWithPdfToMarkdown } = await import('./service-pdf2markdown.js');
+                    result = await convertWithPdfToMarkdown(file, metadata);
+                } else {
+                    throw new Error('Invalid conversion method selected');
                 }
 
-                const result = await response.json();
-                statusSpan.textContent = `Uploaded! ID: ${result.document.id}`; // Corrected to result.document.id
-                statusSpan.style.color = 'var(--success-color)';
-                progressBar.value = 100;
-                completedFiles++;
-
+                // Save to database
+                await this.saveToDatabase(result, file.name, metadata);
+                
             } catch (error) {
-                console.error(`Error processing/uploading ${file.name}:`, error);
-                statusSpan.textContent = `Failed: ${error.message}`;
-                statusSpan.style.color = 'var(--danger-color)';
-                progressBar.value = 0;
-                // Do not increment completedFiles on failure if you want progress to reflect only successful ones
-            } finally {
-                // Update overall progress based on the total number of files attempted,
-                // and the number successfully processed.
-                // It's often better to track completed vs total, but here we increment per file
-                // and update based on that count.
-                this.updateOverallProgress(completedFiles, totalFiles);
+                console.error(`Error processing ${file.name}:`, error);
+                throw new Error(`Failed to process ${file.name}: ${error.message}`);
             }
         }
-
-        // Final message after all files have been processed
-        // Use a timeout to ensure progress bar finishes visually before alert/reset
-        setTimeout(() => {
-            alert('All file operations completed. Check individual file statuses for details.');
-            this.filesToUpload = []; // Clear queue after processing attempt
-            this.jobStatus = {}; // Reset job status
-            this.uploadQueue.innerHTML = ''; // Clear display
-            this.updateUploadButtonState(); // Update button text to reflect empty queue
-            this.formTagsInput.value = ''; // Clear tags input
-            this.formTitleInput.value = ''; // Clear title input
-        }, 500); // Small delay
     }
 
-    updateFileProgress({ jobId, progress, status }) {
-        if (this.jobStatus[jobId]) {
-            const itemElement = this.jobStatus[jobId].element;
-            const statusSpan = itemElement.querySelector('.file-status');
-            const progressBar = itemElement.querySelector('.file-progress');
+    async saveToDatabase(conversionResult, filename, metadata) {
+        const response = await fetch('/api/documents', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                filename: filename,
+                markdown_content: conversionResult.markdown,
+                metadata: {
+                    tags: metadata.tags,
+                    title: metadata.title || filename,
+                    conversion_method: document.querySelector('input[name="conversion-method"]:checked')?.value,
+                    created_at: new Date().toISOString()
+                }
+            })
+        });
 
-            if (statusSpan) statusSpan.textContent = status;
-            if (progressBar) progressBar.value = progress;
+        if (!response.ok) {
+            throw new Error(`Failed to save ${filename} to database`);
         }
+
+        return await response.json();
     }
 
-    handleFileComplete({ jobId, markdownContent }) {
-        // This method is primarily for handling the *conversion* completion from PDF2MDProcessor.
-        // The actual upload happens in `startProcessingAndUpload` after this.
-        console.log(`Conversion job ${jobId} completed.`);
-        // You could use this to update a temporary status for the file item
-        // e.g., this.jobStatus[jobId].element.querySelector('.file-status').textContent = 'Conversion Complete';
+    showOverallProgress() {
+        this.overallProgressContainer.classList.remove('hidden');
     }
 
-    handleFileError({ jobId, error }) {
-        if (this.jobStatus[jobId]) {
-            const itemElement = this.jobStatus[jobId].element;
-            const statusSpan = itemElement.querySelector('.file-status');
-            const progressBar = itemElement.querySelector('.file-progress');
-
-            if (statusSpan) {
-                statusSpan.textContent = `Conversion Error: ${error.message || 'Unknown error'}`;
-                statusSpan.style.color = 'var(--danger-color)';
-            }
-            if (progressBar) progressBar.value = 0;
-        }
-        console.error(`Error in conversion job ${jobId}:`, error);
+    hideOverallProgress() {
+        this.overallProgressContainer.classList.add('hidden');
     }
 
-    updateOverallProgress(completed, total) {
-        const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-        this.overallProgressBar.value = percent;
-        this.overallProgressText.textContent = `${percent}% (${completed}/${total} files)`;
+    updateOverallProgress(percent, message) {
+        this.overallProgress.value = percent;
+        this.overallProgressText.textContent = `${Math.round(percent)}% - ${message}`;
+    }
 
-        if (completed === total && total > 0) {
-            this.overallProgressText.textContent = `All operations completed!`;
-            this.overallProgressBar.style.backgroundColor = 'var(--success-color)';
-            // Consider if you want to visually clear the queue here or keep statuses
-        }
+    showSuccess() {
+        alert('All files processed successfully!');
+        this.resetForm();
+    }
+
+    showError(message) {
+        alert(`Error: ${message}`);
+    }
+
+    resetForm() {
+        this.selectedFiles = [];
+        this.fileInput.value = '';
+        this.updateFileQueue();
+        this.hideMetadataForm();
+        document.getElementById('form-tags').value = '';
+        document.getElementById('form-title').value = '';
+    }
+
+    formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 }
 
-// Export the UploadInterface class if other modules might import it,
-// though for a main entry point like this, it's often instantiated directly.
-// If you want to ensure it runs immediately, you can keep the DOMContentLoaded listener.
+// Initialize uploader when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new UploadInterface();
+    window.uploader = new PDFUploader();
 });
