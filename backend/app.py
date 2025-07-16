@@ -7,6 +7,7 @@ import logging
 import subprocess
 import json
 import shutil
+import mimetypes
 
 # Configuration
 # Define PROJECT_ROOT to point to the top-level directory (pdf2mdhub)
