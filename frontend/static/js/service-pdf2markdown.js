@@ -28,14 +28,21 @@
 //import { PdfParser } from './PdfParser';
 
 // To:
-import { PdfParser } from '/static/js/libs/pdf-to-markdown/src/PdfParser.js';
-import { MarkdownConverter } from '/static/js/libs/pdf-to-markdown/src/convert/MarkdownConverter.js';
-import { parse } from '/static/js/libs/pdf-to-markdown/src/parse.js';
-import { convert } from '/static/js/libs/pdf-to-markdown/src/convert.js';
-import { PdfPipeline } from '/static/js/libs/pdf-to-markdown/src/PdfPipeline.js';
-import { Debugger as PdfDebugger } from '/static/js/libs/pdf-to-markdown/src/Debugger.js';
+//import { PdfParser } from '/static/js/libs/pdf-to-markdown/src/PdfParser.js';
+//import { MarkdownConverter } from '/static/js/libs/pdf-to-markdown/src/convert/MarkdownConverter.js';
+//import { parse } from '/static/js/libs/pdf-to-markdown/src/parse.js';
+//import { convert } from '/static/js/libs/pdf-to-markdown/src/convert.js';
+//import { PdfPipeline } from '/static/js/libs/pdf-to-markdown/src/PdfPipeline.js';
+//import { Debugger as PdfDebugger } from '/static/js/libs/pdf-to-markdown/src/Debugger.js';
 //import { Config } from '/static/js/libs/pdf-to-markdown/src/Config.js';
 
+
+import PdfParser  from '/static/js/libs/pdf-to-markdown/src/PdfParser.js';
+import MarkdownConverter  from '/static/js/libs/pdf-to-markdown/src/convert/MarkdownConverter.js';
+import parse  from '/static/js/libs/pdf-to-markdown/src/parse.js';
+import convert  from '/static/js/libs/pdf-to-markdown/src/convert.js';
+import PdfPipeline  from '/static/js/libs/pdf-to-markdown/src/PdfPipeline.js';
+//import Debugger as PdfDebugger  from '/static/js/libs/pdf-to-markdown/src/Debugger.js';
 
 // Default configuration options
 const DEFAULT_OPTIONS = {
