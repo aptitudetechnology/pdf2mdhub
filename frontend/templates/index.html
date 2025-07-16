@@ -37,10 +37,7 @@
         I'm using `url_for('static', filename='...')` which is the recommended Flask way.
     #}
 
-    {# OPTION 1: For Parcel #}
-    <script type="module" src="{{ url_for('static', filename='js/src/index.js') }}"></script>
-    {# Parcel will detect 'js/src/index.js' as the entry and replace it with its bundle output. #}
-
+   
     {# OPTION 2: For Esbuild #}
     {# <script defer src="{{ url_for('static', filename='js/dist/bundle.js') }}"></script> #}
     {# Esbuild requires you to explicitly link to its output. #}
