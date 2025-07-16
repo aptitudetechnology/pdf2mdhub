@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}PDF2MD Hub{% endblock %}
+{% block title %}Welcome to PDF2MD Hub!{% endblock %} {# Now using the title block from base.html #}
 
 {% block content %}
 <div class="main-content-area">
@@ -27,4 +27,22 @@
         <p>It's designed to be a starting point for document management and content extraction.</p>
     </section>
 </div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }} {# This will now include the upload.js script from base.html #}
+
+    {# 
+        Choose ONE of the following script tags for your main application bundle.
+        I'm using `url_for('static', filename='...')` which is the recommended Flask way.
+    #}
+
+    {# OPTION 1: For Parcel #}
+    <script type="module" src="{{ url_for('static', filename='js/src/index.js') }}"></script>
+    {# Parcel will detect 'js/src/index.js' as the entry and replace it with its bundle output. #}
+
+    {# OPTION 2: For Esbuild #}
+    {# <script defer src="{{ url_for('static', filename='js/dist/bundle.js') }}"></script> #}
+    {# Esbuild requires you to explicitly link to its output. #}
+
 {% endblock %}
