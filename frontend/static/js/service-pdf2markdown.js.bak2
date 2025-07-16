@@ -1,12 +1,45 @@
 /**
- * PDF to Markdown Conversion Service - Rewritten with proper config
+ * PDF to Markdown Conversion Service
  * 
  * This service module provides functionality to convert PDF files to Markdown format
  * using the pdf-to-markdown library's modularized components.
+ * 
+ * Dependencies:
+ * - pdf-to-markdown (modularize branch)
+ * - pdf.js (Mozilla's PDF parsing library)
+ * 
+ * Usage:
+ * import { convertPdfToMarkdown } from './service-pdf2markdown.js';
+ * 
+ * const result = await convertPdfToMarkdown(pdfBuffer, options);
  */
 
-// Configuration object (replaces the missing Config class)
-const Config = {
+// Import core modules from pdf-to-markdown modularize branch
+//import { PdfParser } from './PdfParser';
+//import { MarkdownConverter } from './convert/MarkdownConverter';
+//import { parse } from './parse';
+//import { convert } from './convert';
+//import { PdfPipeline } from './PdfPipeline';
+//import { Debugger as PdfDebugger } from './Debugger'; // Fixed: renamed import to avoid reserved word
+//import { Config } from './Config';
+
+
+// In your TypeScript files, change from:
+//import { PdfParser } from './PdfParser';
+
+// To:
+//import { PdfParser } from '/static/js/libs/pdf-to-markdown/src/PdfParser.js';
+//import { MarkdownConverter } from '/static/js/libs/pdf-to-markdown/src/convert/MarkdownConverter.js';
+//import { parse } from '/static/js/libs/pdf-to-markdown/src/parse.js';
+//import { convert } from '/static/js/libs/pdf-to-markdown/src/convert.js';
+//import { PdfPipeline } from '/static/js/libs/pdf-to-markdown/src/PdfPipeline.js';
+//import { Debugger as PdfDebugger } from '/static/js/libs/pdf-to-markdown/src/Debugger.js';
+//import { Config } from '/static/js/libs/pdf-to-markdown/src/Config.js';
+
+
+
+// Default configuration options
+const DEFAULT_OPTIONS = {
   // Text extraction options
   preserveWhitespace: true,
   mergeHyphenatedWords: true,
@@ -33,115 +66,7 @@ const Config = {
   
   // Advanced options
   debug: false,
-  verbose: false,
-  
-  // API settings (if using external service)
-  apiUrl: 'https://api.pdf-to-markdown.com',
-  timeout: 30000,
-  retries: 3
-};
-
-// Default configuration options
-const DEFAULT_OPTIONS = { ...Config };
-
-/**
- * Access bundled dependencies from global scope
- * These are available after the pdf-to-markdown bundle is loaded
- */
-function getBundledDependencies() {
-  // Check if the bundle has been loaded
-  if (typeof window !== 'undefined' && window.PdfToMarkdown) {
-    return {
-      PdfParser: window.PdfToMarkdown.PdfParser,
-      MarkdownConverter: window.PdfToMarkdown.MarkdownConverter,
-      parse: window.PdfToMarkdown.parse,
-      convert: window.PdfToMarkdown.convert,
-      PdfPipeline: window.PdfToMarkdown.PdfPipeline,
-      Debugger: window.PdfToMarkdown.Debugger
-    };
-  }
-  
-  // Fallback to global scope if directly available
-  return {
-    PdfParser: typeof PdfParser !== 'undefined' ? PdfParser : null,
-    MarkdownConverter: typeof MarkdownConverter !== 'undefined' ? MarkdownConverter : null,
-    parse: typeof parse !== 'undefined' ? parse : null,
-    convert: typeof convert !== 'undefined' ? convert : null,
-    PdfPipeline: typeof PdfPipeline !== 'undefined' ? PdfPipeline : null,
-    Debugger: typeof Debugger !== 'undefined' ? Debugger : null
-  };
-}
-
-/**
- * Mock implementations as fallbacks
- */
-const mockImplementations = {
-  PdfParser: class MockPdfParser {
-    constructor() {
-      this.name = 'MockPdfParser';
-    }
-  },
-  
-  PdfPipeline: class MockPdfPipeline {
-    constructor(config) {
-      this.config = config;
-    }
-  },
-  
-  Debugger: class MockPdfDebugger {
-    constructor(config) {
-      this.config = config;
-    }
-    
-    getStageResults() { return []; }
-    getTransformationResults() { return []; }
-    getStatistics() { return {}; }
-    getPerformanceMetrics() { return {}; }
-  },
-  
-  parse: async function mockParse(pdfBuffer, config) {
-    // Simulate parsing delay
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    return {
-      pages: [{ content: 'Mock page content - replace with actual bundle implementation' }],
-      metadata: {
-        title: 'Sample Document',
-        author: 'Unknown',
-        subject: '',
-        creator: 'Mock Parser',
-        producer: 'Mock Parser',
-        creationDate: new Date(),
-        modificationDate: new Date()
-      },
-      headers: [],
-      lists: [],
-      tables: [],
-      images: [],
-      links: [],
-      warnings: ['Using mock implementation - bundle not loaded']
-    };
-  },
-  
-  convert: async function mockConvert(parseResult, config) {
-    // Simulate conversion delay
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    // Generate mock markdown content
-    const mockMarkdown = `# ${parseResult.metadata.title || 'Untitled Document'}
-
-This is a mock conversion of the PDF document.
-
-## Content
-
-${parseResult.pages.map((page, index) => `### Page ${index + 1}\n\n${page.content || 'No content extracted'}`).join('\n\n')}
-
----
-
-*Generated by Mock PDF to Markdown Converter - Replace with actual bundle*`;
-
-    return mockMarkdown;
-  }
+  verbose: false
 };
 
 /**
@@ -154,7 +79,7 @@ ${parseResult.pages.map((page, index) => `### Page ${index + 1}\n\n${page.conten
 export async function convertPdfToMarkdown(pdfBuffer, options = {}) {
   try {
     // Merge user options with defaults
-    const config = { ...DEFAULT_OPTIONS, ...options };
+    const config = new Config({ ...DEFAULT_OPTIONS, ...options });
     
     // Validate input
     if (!pdfBuffer) {
@@ -168,29 +93,19 @@ export async function convertPdfToMarkdown(pdfBuffer, options = {}) {
     
     const startTime = Date.now();
     
-    // Get bundled dependencies or fallback to mocks
-    const deps = getBundledDependencies();
-    const PdfParser = deps.PdfParser || mockImplementations.PdfParser;
-    const PdfPipeline = deps.PdfPipeline || mockImplementations.PdfPipeline;
-    const parseFunc = deps.parse || mockImplementations.parse;
-    const convertFunc = deps.convert || mockImplementations.convert;
-    
     // Initialize parser and pipeline
     const parser = new PdfParser();
     const pipeline = new PdfPipeline(config);
     
     // Parse the PDF document
-    const parseResult = await parseFunc(pdfBuffer, config);
+    const parseResult = await parse(pdfBuffer, config);
     
     if (config.debug) {
       console.log(`PDF parsed successfully. Pages: ${parseResult.pages.length}`);
-      if (parseResult.warnings && parseResult.warnings.length > 0) {
-        console.log('Warnings:', parseResult.warnings);
-      }
     }
     
     // Convert to Markdown using the pipeline
-    const markdownResult = await convertFunc(parseResult, config);
+    const markdownResult = await convert(parseResult, config);
     
     if (config.debug) {
       console.log('Conversion completed successfully');
@@ -232,53 +147,6 @@ export async function convertPdfToMarkdown(pdfBuffer, options = {}) {
 }
 
 /**
- * Alternative implementation using external API service
- */
-export async function convertPdfToMarkdownAPI(pdfBuffer, options = {}) {
-  try {
-    const config = { ...DEFAULT_OPTIONS, ...options };
-    
-    if (!pdfBuffer) {
-      throw new Error('PDF buffer is required');
-    }
-    
-    if (config.debug) {
-      console.log('Starting API-based PDF to Markdown conversion...');
-    }
-    
-    const startTime = Date.now();
-    
-    // Create form data
-    const formData = new FormData();
-    formData.append('pdf', new Blob([pdfBuffer], { type: 'application/pdf' }));
-    formData.append('options', JSON.stringify(config));
-    
-    // Make API request
-    const response = await fetch(config.apiUrl, {
-      method: 'POST',
-      body: formData,
-      signal: AbortSignal.timeout(config.timeout)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
-    }
-    
-    const result = await response.json();
-    
-    // Add processing time
-    result.metadata = result.metadata || {};
-    result.metadata.processingTime = Date.now() - startTime;
-    
-    return result;
-    
-  } catch (error) {
-    console.error('API conversion error:', error);
-    throw new Error(`API conversion failed: ${error.message}`);
-  }
-}
-
-/**
  * Utility function to convert PDF file from file path
  * 
  * @param {string} filePath - Path to the PDF file
@@ -286,13 +154,10 @@ export async function convertPdfToMarkdownAPI(pdfBuffer, options = {}) {
  * @returns {Promise<Object>} Conversion result
  */
 export async function convertPdfFileToMarkdown(filePath, options = {}) {
+  const fs = require('fs').promises;
+  
   try {
-    const response = await fetch(filePath);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch file: ${response.status}`);
-    }
-    
-    const pdfBuffer = await response.arrayBuffer();
+    const pdfBuffer = await fs.readFile(filePath);
     return await convertPdfToMarkdown(pdfBuffer, options);
   } catch (error) {
     throw new Error(`Failed to read PDF file: ${error.message}`);
@@ -406,7 +271,7 @@ export function getConversionOptions() {
  * @returns {boolean} True if valid PDF buffer
  */
 export function isPdfBuffer(buffer) {
-  if (!buffer || buffer.byteLength < 5) {
+  if (!buffer || buffer.length < 5) {
     return false;
   }
   
@@ -427,10 +292,7 @@ export function isPdfBuffer(buffer) {
  */
 export async function estimateConversionTime(pdfBuffer) {
   try {
-    const deps = getBundledDependencies();
-    const parseFunc = deps.parse || mockImplementations.parse;
-    
-    const parseResult = await parseFunc(pdfBuffer, { debug: false });
+    const parseResult = await parse(pdfBuffer, new Config({ debug: false }));
     
     // Rough estimation: 100ms per page + 500ms base processing
     const estimatedTime = (parseResult.pages.length * 100) + 500;
@@ -441,6 +303,9 @@ export async function estimateConversionTime(pdfBuffer) {
   }
 }
 
+// Export default options for external use
+export { DEFAULT_OPTIONS };
+
 /**
  * Utility function to get detailed debug information during conversion
  * 
@@ -450,21 +315,14 @@ export async function estimateConversionTime(pdfBuffer) {
  */
 export async function convertPdfWithDebug(pdfBuffer, options = {}) {
   try {
-    const config = { ...DEFAULT_OPTIONS, ...options, debug: true };
-    
-    // Get bundled dependencies or fallback to mocks
-    const deps = getBundledDependencies();
-    const PdfDebugger = deps.Debugger || mockImplementations.Debugger;
-    const parseFunc = deps.parse || mockImplementations.parse;
-    const convertFunc = deps.convert || mockImplementations.convert;
-    
-    const pdfDebugger = new PdfDebugger(config);
+    const config = new Config({ ...DEFAULT_OPTIONS, ...options, debug: true });
+    const pdfDebugger = new PdfDebugger(config); // Fixed: renamed variable to avoid reserved keyword
     
     // Parse with debug tracking
-    const parseResult = await parseFunc(pdfBuffer, config);
+    const parseResult = await parse(pdfBuffer, config);
     
     // Convert with debug information
-    const markdownResult = await convertFunc(parseResult, config);
+    const markdownResult = await convert(parseResult, config);
     
     // Get debug stages information
     const debugInfo = {
@@ -516,22 +374,11 @@ export const VERSION = '1.0.0';
 export const SUPPORTED_FORMATS = ['pdf'];
 export const OUTPUT_FORMATS = ['markdown', 'md'];
 
-// Export config for external use
-export { Config, DEFAULT_OPTIONS };
-
-/**
- * Adapter function to match the expected interface in upload.js
- * This is the main function that will be called by your uploader
- */
+// Adapter function to match the expected interface in upload.js
 export async function convertWithPdfToMarkdown(file, metadata) {
   try {
     // Convert File object to ArrayBuffer
     const buffer = await file.arrayBuffer();
-    
-    // Validate PDF buffer
-    if (!isPdfBuffer(buffer)) {
-      throw new Error('Invalid PDF file format');
-    }
     
     // Call the main conversion function
     const result = await convertPdfToMarkdown(buffer, {
@@ -543,32 +390,6 @@ export async function convertWithPdfToMarkdown(file, metadata) {
     return result;
     
   } catch (error) {
-    console.error('PDF to Markdown conversion error:', error);
     throw new Error(`PDF conversion failed: ${error.message}`);
-  }
-}
-
-/**
- * Alternative adapter using API service
- */
-export async function convertWithPdfToMarkdownAPI(file, metadata) {
-  try {
-    const buffer = await file.arrayBuffer();
-    
-    if (!isPdfBuffer(buffer)) {
-      throw new Error('Invalid PDF file format');
-    }
-    
-    const result = await convertPdfToMarkdownAPI(buffer, {
-      debug: false,
-      verbose: false,
-      ...metadata
-    });
-    
-    return result;
-    
-  } catch (error) {
-    console.error('API PDF to Markdown conversion error:', error);
-    throw new Error(`API PDF conversion failed: ${error.message}`);
   }
 }
