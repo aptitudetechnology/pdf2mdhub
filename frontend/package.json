@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "Frontend for PDF2MD Hub",
   "scripts": {
-    "start": "parcel frontend/static/js/upload.js --dist-dir static/js --public-url /static/js/",
-    "build": "parcel build frontend/static/js/upload.js --dist-dir static/js --public-url /static/js/"
+    "start": "parcel static/js/upload.js --dist-dir static/js --public-url /static/js/",
+    "build": "parcel build static/js/upload.js --dist-dir static/js --public-url /static/js/"
   },
   "keywords": [],
   "author": "",
