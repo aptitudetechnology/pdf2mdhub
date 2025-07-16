@@ -15,13 +15,22 @@
  */
 
 // Import core modules from pdf-to-markdown modularize branch
-import { PdfParser } from './PdfParser';
-import { MarkdownConverter } from './convert/MarkdownConverter';
-import { parse } from './parse';
-import { convert } from './convert';
-import { PdfPipeline } from './PdfPipeline';
-import { Debugger as PdfDebugger } from './Debugger'; // Fixed: renamed import to avoid reserved word
-import { Config } from './Config';
+//import { PdfParser } from './PdfParser';
+//import { MarkdownConverter } from './convert/MarkdownConverter';
+//import { parse } from './parse';
+//import { convert } from './convert';
+//import { PdfPipeline } from './PdfPipeline';
+//import { Debugger as PdfDebugger } from './Debugger'; // Fixed: renamed import to avoid reserved word
+//import { Config } from './Config';
+
+
+{
+  "imports": {
+    "pdf-to-markdown/": "/static/js/libs/pdf-to-markdown/src/",
+    "pdf-to-markdown/convert/": "/static/js/libs/pdf-to-markdown/src/convert/"
+  }
+}
+
 
 // Default configuration options
 const DEFAULT_OPTIONS = {
