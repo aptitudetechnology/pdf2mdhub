@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Frontend for PDF2MD Hub",
   "scripts": {
-    "start": "esbuild static/js/src/upload.js --bundle --outfile=static/js/bundle.js --platform=browser --target=es2017 --sourcemap --watch",
+    "start": "esbuild static/js/src/upload.js --bundle --outfile=static/js/bundle.js --platform=browser --target=es2017 --sourcemap --watch=forever",
     "build": "esbuild static/js/src/upload.js --bundle --outfile=static/js/bundle.js --platform=browser --target=es2017 --sourcemap --minify"
   },
   "keywords": [],
