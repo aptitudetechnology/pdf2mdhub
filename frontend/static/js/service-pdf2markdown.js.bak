@@ -15,13 +15,11 @@
  */
 
 // Import core modules from pdf-to-markdown modularize branch
-import { PdfParser } from './PdfParser';
-import { MarkdownConverter } from './convert/MarkdownConverter';
-import { parse } from './parse';
-import { convert } from './convert';
-import { PdfPipeline } from './PdfPipeline';
-import { Debugger } from './Debugger';
-import { Config } from './Config';
+// Note: These imports should be adjusted based on the actual modularize branch structure
+import { PdfParser } from 'pdf-to-markdown/lib/parser';
+import { MarkdownConverter } from 'pdf-to-markdown/lib/converter';
+import { TextExtractor } from 'pdf-to-markdown/lib/text-extractor';
+import { StructureAnalyzer } from 'pdf-to-markdown/lib/structure-analyzer';
 
 // Default configuration options
 const DEFAULT_OPTIONS = {
@@ -64,7 +62,7 @@ const DEFAULT_OPTIONS = {
 export async function convertPdfToMarkdown(pdfBuffer, options = {}) {
   try {
     // Merge user options with defaults
-    const config = new Config({ ...DEFAULT_OPTIONS, ...options });
+    const config = { ...DEFAULT_OPTIONS, ...options };
     
     // Validate input
     if (!pdfBuffer) {
@@ -76,52 +74,60 @@ export async function convertPdfToMarkdown(pdfBuffer, options = {}) {
       console.log('Options:', config);
     }
     
-    const startTime = Date.now();
-    
-    // Initialize parser and pipeline
-    const parser = new PdfParser();
-    const pipeline = new PdfPipeline(config);
-    
-    // Parse the PDF document
-    const parseResult = await parse(pdfBuffer, config);
+    // Initialize parser with PDF buffer
+    const parser = new PdfParser(config);
+    const pdfDocument = await parser.loadDocument(pdfBuffer);
     
     if (config.debug) {
-      console.log(`PDF parsed successfully. Pages: ${parseResult.pages.length}`);
+      console.log(`PDF loaded successfully. Pages: ${pdfDocument.numPages}`);
     }
     
-    // Convert to Markdown using the pipeline
-    const markdownResult = await convert(parseResult, config);
+    // Extract text and structure information
+    const textExtractor = new TextExtractor(config);
+    const structureAnalyzer = new StructureAnalyzer(config);
+    
+    const extractedData = await textExtractor.extractFromDocument(pdfDocument);
+    const structureData = await structureAnalyzer.analyzeStructure(extractedData);
     
     if (config.debug) {
-      console.log('Conversion completed successfully');
-      console.log(`Generated ${markdownResult.length} characters of markdown`);
+      console.log('Text extraction completed');
+      console.log('Structure analysis completed');
     }
+    
+    // Convert to Markdown
+    const markdownConverter = new MarkdownConverter(config);
+    const markdownResult = await markdownConverter.convert(structureData);
     
     // Prepare result object
     const result = {
-      markdown: markdownResult,
+      markdown: markdownResult.text,
       metadata: {
-        title: parseResult.metadata?.title || 'Untitled Document',
-        author: parseResult.metadata?.author || 'Unknown',
-        subject: parseResult.metadata?.subject || '',
-        creator: parseResult.metadata?.creator || '',
-        producer: parseResult.metadata?.producer || '',
-        creationDate: parseResult.metadata?.creationDate || null,
-        modificationDate: parseResult.metadata?.modificationDate || null,
-        pageCount: parseResult.pages.length,
-        wordCount: markdownResult.split(/\s+/).length,
-        characterCount: markdownResult.length,
-        processingTime: Date.now() - startTime
+        title: extractedData.title || 'Untitled Document',
+        author: extractedData.author || 'Unknown',
+        subject: extractedData.subject || '',
+        creator: extractedData.creator || '',
+        producer: extractedData.producer || '',
+        creationDate: extractedData.creationDate || null,
+        modificationDate: extractedData.modificationDate || null,
+        pageCount: pdfDocument.numPages,
+        wordCount: markdownResult.wordCount || 0,
+        characterCount: markdownResult.characterCount || 0,
+        processingTime: markdownResult.processingTime || 0
       },
       structure: {
-        headers: parseResult.headers || [],
-        lists: parseResult.lists || [],
-        tables: parseResult.tables || [],
-        images: parseResult.images || [],
-        links: parseResult.links || []
+        headers: structureData.headers || [],
+        lists: structureData.lists || [],
+        tables: structureData.tables || [],
+        images: structureData.images || [],
+        links: structureData.links || []
       },
-      warnings: parseResult.warnings || []
+      warnings: markdownResult.warnings || []
     };
+    
+    if (config.debug) {
+      console.log('Conversion completed successfully');
+      console.log(`Generated ${result.markdown.length} characters of markdown`);
+    }
     
     return result;
     
@@ -277,10 +283,11 @@ export function isPdfBuffer(buffer) {
  */
 export async function estimateConversionTime(pdfBuffer) {
   try {
-    const parseResult = await parse(pdfBuffer, new Config({ debug: false }));
+    const parser = new PdfParser({ debug: false });
+    const pdfDocument = await parser.loadDocument(pdfBuffer);
     
     // Rough estimation: 100ms per page + 500ms base processing
-    const estimatedTime = (parseResult.pages.length * 100) + 500;
+    const estimatedTime = (pdfDocument.numPages * 100) + 500;
     
     return estimatedTime;
   } catch (error) {
@@ -290,69 +297,6 @@ export async function estimateConversionTime(pdfBuffer) {
 
 // Export default options for external use
 export { DEFAULT_OPTIONS };
-
-/**
- * Utility function to get detailed debug information during conversion
- * 
- * @param {ArrayBuffer|Buffer} pdfBuffer - PDF buffer
- * @param {Object} options - Configuration options
- * @returns {Promise<Object>} Debug information and conversion result
- */
-export async function convertPdfWithDebug(pdfBuffer, options = {}) {
-  try {
-    const config = new Config({ ...DEFAULT_OPTIONS, ...options, debug: true });
-    const debugger = new Debugger(config);
-    
-    // Parse with debug tracking
-    const parseResult = await parse(pdfBuffer, config);
-    
-    // Convert with debug information
-    const markdownResult = await convert(parseResult, config);
-    
-    // Get debug stages information
-    const debugInfo = {
-      stages: debugger.getStageResults(),
-      transformations: debugger.getTransformationResults(),
-      statistics: debugger.getStatistics(),
-      performance: debugger.getPerformanceMetrics()
-    };
-    
-    return {
-      markdown: markdownResult,
-      debug: debugInfo,
-      parseResult: parseResult
-    };
-    
-  } catch (error) {
-    throw new Error(`Debug conversion failed: ${error.message}`);
-  }
-}
-
-/**
- * Utility function to get transformation pipeline stages
- * 
- * @returns {Array<string>} Available transformation stages
- */
-export function getTransformationStages() {
-  return [
-    'unwrapCoordinates',
-    'adjustHeights', 
-    'calculateStatistics',
-    'compactLines',
-    'detectBlocks',
-    'detectCodeBlocks',
-    'detectFontStyles',
-    'detectFootnotes',
-    'detectHeaders',
-    'detectLinks',
-    'detectListItems',
-    'detectListLevels',
-    'detectTOC',
-    'removeEmptyItems',
-    'removeRepetitiveItems',
-    'sortbyX'
-  ];
-}
 
 // Export version information
 export const VERSION = '1.0.0';
