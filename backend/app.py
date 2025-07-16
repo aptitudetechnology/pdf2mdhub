@@ -47,6 +47,10 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///documents.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+    # import mimetypes
+    mimetypes.add_type('application/javascript', '.js')
+    mimetypes.add_type('application/javascript', '.mjs')
+
     # Initialize Flask-SQLAlchemy - import only db instance
     from backend.models import db
     db.init_app(app)
