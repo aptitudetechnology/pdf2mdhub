@@ -20,7 +20,7 @@ import { MarkdownConverter } from './convert/MarkdownConverter';
 import { parse } from './parse';
 import { convert } from './convert';
 import { PdfPipeline } from './PdfPipeline';
-import { Debugger as PdfDebugger } from './Debugger'; // Fixed: renamed import to avoid reserved word
+import { Debugger } from './Debugger';
 import { Config } from './Config';
 
 // Default configuration options
@@ -301,7 +301,7 @@ export { DEFAULT_OPTIONS };
 export async function convertPdfWithDebug(pdfBuffer, options = {}) {
   try {
     const config = new Config({ ...DEFAULT_OPTIONS, ...options, debug: true });
-    const debugger = new PdfDebugger(config); // Fixed: use renamed import
+    const debugger = new Debugger(config);
     
     // Parse with debug tracking
     const parseResult = await parse(pdfBuffer, config);
@@ -358,23 +358,3 @@ export function getTransformationStages() {
 export const VERSION = '1.0.0';
 export const SUPPORTED_FORMATS = ['pdf'];
 export const OUTPUT_FORMATS = ['markdown', 'md'];
-
-// Adapter function to match the expected interface in upload.js
-export async function convertWithPdfToMarkdown(file, metadata) {
-  try {
-    // Convert File object to ArrayBuffer
-    const buffer = await file.arrayBuffer();
-    
-    // Call the main conversion function
-    const result = await convertPdfToMarkdown(buffer, {
-      debug: false,
-      verbose: false,
-      ...metadata
-    });
-    
-    return result;
-    
-  } catch (error) {
-    throw new Error(`PDF conversion failed: ${error.message}`);
-  }
-}
