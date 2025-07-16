@@ -3,14 +3,14 @@
   "version": "1.0.0",
   "description": "Frontend for PDF2MD Hub",
   "scripts": {
-    "start": "parcel static/js/upload.js --dist-dir static/js --public-url /static/js/",
-    "build": "parcel build static/js/upload.js --dist-dir static/js --public-url /static/js/"
+    "start": "esbuild static/js/src/upload.js --bundle --outfile=static/js/bundle.js --platform=browser --target=es2017 --sourcemap --watch",
+    "build": "esbuild static/js/src/upload.js --bundle --outfile=static/js/bundle.js --platform=browser --target=es2017 --sourcemap --minify"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "parcel": "^2.15.4"
+    "esbuild": "^0.23.0" // Use the version npm install gave you (e.g., ^0.23.0 or higher)
   },
   "dependencies": {
     "simple-statistics": "^7.8.8",
