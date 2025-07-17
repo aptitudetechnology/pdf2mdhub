@@ -4,7 +4,7 @@
     <h1>PDF Document Upload & Conversion</h1>
     
     <div class="demo-section">
-        <h3>1. File Selection.</h3>
+        <h3>1. File Selection</h3>
         <p>Drag & drop your PDF files here or click to select them for conversion and management.</p>
         <div id="drop-zone" class="drop-zone">
             <p class="drop-zone-text">Drag & drop files here</p>
@@ -21,7 +21,7 @@
         <div id="upload-queue" class="output">No files selected yet.</div>
     </div>
     
-    <form id="metadata-form">
+    <form id="metadata-form" class="hidden">
         <div class="demo-section">
             <h3>3. Conversion Method</h3>
             <p>Choose your preferred PDF to Markdown conversion method.</p>
@@ -58,7 +58,7 @@
         </div>
     </form>
     
-    <div id="overall-progress-container" class="demo-section">
+    <div id="overall-progress-container" class="demo-section hidden">
         <h3>Processing Progress</h3>
         <div class="progress-bar">
             <progress id="overall-upload-progress" value="0" max="100"></progress>
@@ -74,59 +74,25 @@
 </div>
 
 <script type="module">
-    // Test both PDF conversion services on page load
+    // Test PDF2MD availability on page load
     import { testPdf2mdAvailability, getPdf2mdInfo } from '{{ url_for("static", filename="js/service-pdf2md.js") }}';
-    import { testPdf2markdownAvailability, getPdf2markdownInfo } from '{{ url_for("static", filename="js/service-pdf2markdown.js") }}';
     
     document.addEventListener('DOMContentLoaded', async () => {
-        console.log('Testing PDF conversion services...');
+        console.log('Testing PDF2MD availability...');
+        const isAvailable = await testPdf2mdAvailability();
+        const info = await getPdf2mdInfo();
         
-        // Test PDF2MD service
-        const pdf2mdAvailable = await testPdf2mdAvailability();
-        const pdf2mdInfo = await getPdf2mdInfo();
+        console.log('PDF2MD Available:', isAvailable);
+        console.log('PDF2MD Info:', info);
         
-        // Test PDF2Markdown service
-        const pdf2markdownAvailable = await testPdf2markdownAvailability();
-        const pdf2markdownInfo = await getPdf2markdownInfo();
-        
-        console.log('PDF2MD Available:', pdf2mdAvailable);
-        console.log('PDF2MD Info:', pdf2mdInfo);
-        console.log('PDF2Markdown Available:', pdf2markdownAvailable);
-        console.log('PDF2Markdown Info:', pdf2markdownInfo);
-        
-        // Show warnings for unavailable services
-        if (!pdf2mdAvailable || !pdf2markdownAvailable) {
+        if (!isAvailable) {
             const errorDiv = document.createElement('div');
             errorDiv.className = 'alert alert-warning';
-            let warningText = '<strong>Warning:</strong> ';
-            
-            if (!pdf2mdAvailable && !pdf2markdownAvailable) {
-                warningText += 'Both PDF conversion services are unavailable.';
-            } else if (!pdf2mdAvailable) {
-                warningText += 'PDF2MD converter is not available.';
-            } else if (!pdf2markdownAvailable) {
-                warningText += 'PDF2Markdown converter is not available.';
-            }
-            
-            errorDiv.innerHTML = warningText;
+            errorDiv.innerHTML = `
+                <strong>Warning:</strong> PDF2MD converter is not available. 
+                Error: ${info.error || 'Unknown error'}
+            `;
             document.querySelector('.container').prepend(errorDiv);
-        }
-        
-        // Disable radio buttons for unavailable services
-        if (!pdf2mdAvailable) {
-            const pdf2mdRadio = document.querySelector('input[value="opendocsg"]');
-            if (pdf2mdRadio) {
-                pdf2mdRadio.disabled = true;
-                pdf2mdRadio.parentElement.style.opacity = '0.5';
-            }
-        }
-        
-        if (!pdf2markdownAvailable) {
-            const pdf2markdownRadio = document.querySelector('input[value="pdf-to-markdown"]');
-            if (pdf2markdownRadio) {
-                pdf2markdownRadio.disabled = true;
-                pdf2markdownRadio.parentElement.style.opacity = '0.5';
-            }
         }
     });
 </script>
