@@ -68,6 +68,10 @@ def create_app():
     from backend.routes.webcontainer_demo import webcontainer_demo_bp
     app.register_blueprint(webcontainer_demo_bp)
 
+    # Register the test_pdf2md blueprint
+    from backend.routes.test_pdf2md import test_pdf2md_bp
+    app.register_blueprint(test_pdf2md_bp)
+
     # Register routes with the app
     register_routes(app)
     
