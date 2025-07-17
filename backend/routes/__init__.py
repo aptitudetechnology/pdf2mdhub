@@ -10,10 +10,10 @@ from .upload import upload_bp
 from .documents import documents_bp
 from .search import search_bp
 from .webcontainer_demo import webcontainer_demo_bp
-from .test_pdf2md import test_pdf2md_bp
+from .testpdf2md import testpdf2md_bp
 
 api_bp.register_blueprint(upload_bp)
 api_bp.register_blueprint(documents_bp)
 api_bp.register_blueprint(search_bp)
 api_bp.register_blueprint(webcontainer_demo_bp)
-api_bp.register_blueprint(test_pdf2md_bp)
+api_bp.register_blueprint(testpdf2md_bp)
