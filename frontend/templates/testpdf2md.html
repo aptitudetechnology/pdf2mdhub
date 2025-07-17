@@ -18,7 +18,7 @@
 </div>
 
 <script type="module">
-    import { testPdf2mdAvailability, getPdf2mdInfo, convertWithPdf2md } from '{{ url_for("static", filename="js/src/service-pdf2md.js") }}';
+    import { testPdf2mdAvailability, getPdf2mdInfo, convertWithPdf2md } from '{{ url_for("static", filename="js/service-pdf2md.js") }}';
     
     document.getElementById('testButton').addEventListener('click', async () => {
         const statusDiv = document.getElementById('bundleStatus');
