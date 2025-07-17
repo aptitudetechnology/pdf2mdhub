@@ -2,7 +2,7 @@
 
 A lightweight document management web application with client-side PDF to Markdown conversion using OpenGovSG's pdf2md library.
 
-## Components ###
+## Components ##
 
 
 sudo apt install npm
