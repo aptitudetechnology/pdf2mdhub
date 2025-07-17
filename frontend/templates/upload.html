@@ -75,7 +75,7 @@
 
 <script type="module">
     // Test PDF2MD availability on page load
-    import { testPdf2mdAvailability, getPdf2mdInfo } from '{{ url_for("static", filename="js/src/service-pdf2md.js") }}';
+    import { testPdf2mdAvailability, getPdf2mdInfo } from '{{ url_for("static", filename="js/service-pdf2md.js") }}';
     
     document.addEventListener('DOMContentLoaded', async () => {
         console.log('Testing PDF2MD availability...');
