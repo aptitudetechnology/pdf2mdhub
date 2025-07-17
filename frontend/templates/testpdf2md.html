@@ -15,9 +15,52 @@
         <button id="convertTestButton" class="button primary-button" disabled>Convert Test PDF</button>
         <div id="conversionResult" class="output">Select a PDF file to test conversion...</div>
     </div>
+
+    ---
+
+    <h2>PDF Uploader</h2>
+    <div class="upload-section">
+        <div id="drop-zone" class="drop-zone">
+            <p>Drag & Drop PDF files here or click to select</p>
+            <input type="file" id="file-input" accept="application/pdf" multiple style="display: none;">
+        </div>
+
+        <h3>Selected Files</h3>
+        <div id="upload-queue" class="upload-queue">
+            <p class="queue-placeholder">No files selected yet.</p>
+        </div>
+
+        <form id="metadata-form" class="metadata-form hidden">
+            <h3>Document Details</h3>
+            <div class="form-group">
+                <label for="form-title">Title:</label>
+                <input type="text" id="form-title" placeholder="e.g., My Research Paper">
+            </div>
+            <div class="form-group">
+                <label for="form-tags">Tags (comma-separated):</label>
+                <input type="text" id="form-tags" placeholder="e.g., research, AI, PDF">
+            </div>
+
+            <div class="form-group">
+                <label>Conversion Method:</label><br>
+                <input type="radio" id="method-opendocsg" name="conversion-method" value="opendocsg" checked>
+                <label for="method-opendocsg">OpenDocSG (PDF2MD)</label><br>
+                <input type="radio" id="method-pdftomarkdown" name="conversion-method" value="pdf-to-markdown">
+                <label for="method-pdftomarkdown">pdf-to-markdown (External Service)</label>
+            </div>
+            
+            <button type="submit" class="button primary-button">Upload & Convert</button>
+        </form>
+
+        <div id="overall-progress-container" class="overall-progress-container hidden">
+            <progress id="overall-upload-progress" value="0" max="100"></progress>
+            <div id="overall-progress-text">0% - Waiting...</div>
+        </div>
+    </div>
 </div>
 
 <script type="module">
+    // Your existing script for PDF2MD Bundle Test
     import { testPdf2mdAvailability, getPdf2mdInfo, convertWithPdf2md } from '{{ url_for("static", filename="js/service-pdf2md.js") }}';
     
     document.getElementById('testButton').addEventListener('click', async () => {
@@ -70,5 +113,13 @@
             resultDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
         }
     });
+
+    // Initialize uploader when DOM is loaded - This part is already in your upload.js file
+    // You only need to ensure upload.js is loaded AFTER the HTML elements it needs.
+    // For example, by having a <script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+    // right before the closing </body> tag, or as part of this script block if you prefer
+    // to combine it (though keeping it separate is good practice).
 </script>
+
+<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
 {% endblock %}
