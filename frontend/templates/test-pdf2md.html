@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h1>PDF2MD Bundle Test</h1>
+    
+    <div class="demo-section">
+        <h3>Bundle Status</h3>
+        <button id="testButton" class="button primary-button">Test Bundle Loading</button>
+        <div id="bundleStatus" class="output">Click test button to check bundle status...</div>
+    </div>
+    
+    <div class="demo-section">
+        <h3>Quick PDF Test</h3>
+        <input type="file" id="testFileInput" accept="application/pdf">
+        <button id="convertTestButton" class="button primary-button" disabled>Convert Test PDF</button>
+        <div id="conversionResult" class="output">Select a PDF file to test conversion...</div>
+    </div>
+</div>
+
+<script type="module">
+    import { testPdf2mdAvailability, getPdf2mdInfo, convertWithPdf2md } from '{{ url_for("static", filename="js/src/service-pdf2md.js") }}';
+    
+    document.getElementById('testButton').addEventListener('click', async () => {
+        const statusDiv = document.getElementById('bundleStatus');
+        statusDiv.textContent = 'Testing...';
+        
+        try {
+            const isAvailable = await testPdf2mdAvailability();
+            const info = await getPdf2mdInfo();
+            
+            statusDiv.innerHTML = `
+                <strong>Available:</strong> ${isAvailable}<br>
+                <strong>Info:</strong> ${JSON.stringify(info, null, 2)}
+            `;
+        } catch (error) {
+            statusDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
+        }
+    });
+    
+    document.getElementById('testFileInput').addEventListener('change', (e) => {
+        const button = document.getElementById('convertTestButton');
+        button.disabled = e.target.files.length === 0;
+    });
+    
+    document.getElementById('convertTestButton').addEventListener('click', async () => {
+        const fileInput = document.getElementById('testFileInput');
+        const resultDiv = document.getElementById('conversionResult');
+        
+        if (!fileInput.files.length) {
+            resultDiv.textContent = 'Please select a PDF file first.';
+            return;
+        }
+        
+        const file = fileInput.files[0];
+        resultDiv.textContent = 'Converting...';
+        
+        try {
+            const result = await convertWithPdf2md(file, {
+                title: 'Test Document',
+                tags: 'test, pdf2md'
+            });
+            
+            resultDiv.innerHTML = `
+                <strong>Success:</strong> ${result.success}<br>
+                <strong>Message:</strong> ${result.message}<br>
+                <strong>Markdown Preview:</strong><br>
+                <pre>${result.markdown ? result.markdown.substring(0, 500) + '...' : 'No content'}</pre>
+            `;
+        } catch (error) {
+            resultDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
+        }
+    });
+</script>
+{% endblock %}
