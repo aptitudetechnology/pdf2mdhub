@@ -1,292 +1,35 @@
-{% extends "base.html" %}
-{% block content %}
-<div class="container">
-    <h1>PDF to Markdown Converter</h1>
-    
-    <!-- Bundle Status Section -->
-    <div class="demo-section">
-        <h3>Bundle Status</h3>
-        <button id="testButton" class="button primary-button">Test Bundle Loading</button>
-        <div id="bundleStatus" class="output">Click test button to check bundle status...</div>
-    </div>
-    
-    <!-- Main Upload Section -->
-    <div class="upload-section">
-        <h3>Upload PDF Files</h3>
-        
-        <!-- Drag and Drop Area -->
-        <div id="dropZone" class="drop-zone">
-            <div class="drop-zone-content">
-                <div class="upload-icon">📄</div>
-                <p>Drag and drop PDF files here, or click to select</p>
-                <input type="file" id="fileInput" accept=".pdf" multiple hidden>
-                <button id="selectButton" class="button secondary-button">Select Files</button>
-            </div>
-        </div>
-        
-        <!-- File List -->
-        <div id="fileList" class="file-list" style="display: none;">
-            <h4>Selected Files:</h4>
-            <div id="fileItems"></div>
-        </div>
-        
-        <!-- Metadata Form -->
-        <div id="metadataForm" class="metadata-form" style="display: none;">
-            <h4>Document Metadata</h4>
-            <div class="form-group">
-                <label for="title">Title:</label>
-                <input type="text" id="title" name="title" placeholder="Enter document title">
-            </div>
-            
-            <div class="form-group">
-                <label for="tags">Tags:</label>
-                <input type="text" id="tags" name="tags" placeholder="Enter tags (comma-separated)">
-            </div>
-            
-            <div class="form-group">
-                <label for="notes">Notes:</label>
-                <textarea id="notes" name="notes" placeholder="Add any notes about this document"></textarea>
-            </div>
-            
-            <button id="convertButton" class="button primary-button">Convert to Markdown</button>
-        </div>
-        
-        <!-- Progress Section -->
-        <div id="progressSection" class="progress-section" style="display: none;">
-            <h4>Conversion Progress</h4>
-            <div id="progressBar" class="progress-bar">
-                <div id="progressFill" class="progress-fill"></div>
-            </div>
-            <div id="progressText" class="progress-text">0%</div>
-        </div>
-        
-        <!-- Results Section -->
-        <div id="resultsSection" class="results-section" style="display: none;">
-            <h4>Conversion Results</h4>
-            <div id="conversionResult" class="output"></div>
-        </div>
-    </div>
-    
-    <!-- Quick Test Section (Original) -->
-    <div class="demo-section">
-        <h3>Quick PDF Test</h3>
-        <input type="file" id="testFileInput" accept="application/pdf">
-        <button id="convertTestButton" class="button primary-button" disabled>Convert Test PDF</button>
-        <div id="testResult" class="output">Select a PDF file to test conversion...</div>
-    </div>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF2MD Hub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 
-<script type="module">
-import { testPdf2mdAvailability, getPdf2mdInfo, convertWithPdf2md } from '{{ url_for("static", filename="js/src/service-pdf2md.js") }}';
 
-// Bundle test functionality
-document.getElementById('testButton').addEventListener('click', async () => {
-    const statusDiv = document.getElementById('bundleStatus');
-    statusDiv.textContent = 'Testing...';
-    
-    try {
-        const isAvailable = await testPdf2mdAvailability();
-        const info = await getPdf2mdInfo();
-        statusDiv.innerHTML = `
-            <strong>Available:</strong> ${isAvailable}<br>
-            <strong>Info:</strong> ${JSON.stringify(info, null, 2)}
-        `;
-    } catch (error) {
-        statusDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
     }
-});
 
-// Quick test functionality
-document.getElementById('testFileInput').addEventListener('change', (e) => {
-    const button = document.getElementById('convertTestButton');
-    button.disabled = e.target.files.length === 0;
-});
+    <script type="module" src="{{ url_for('static', filename='js/upload.js') }}"></script>
+    </head>
+<body>
+    <header class="app-header">
+        <nav class="main-nav">
+            <a href="/" class="logo">PDF2MD Hub</a>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('upload_page') }}">Upload</a></li>
+                <li><a href="{{ url_for('search_page') }}">Search</a></li>
+                </ul>
+        </nav>
+    </header>
 
-document.getElementById('convertTestButton').addEventListener('click', async () => {
-    const fileInput = document.getElementById('testFileInput');
-    const resultDiv = document.getElementById('testResult');
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="app-footer">
+        <p> PDF2MD Hub</p>
+    </footer>
+
     
-    if (!fileInput.files.length) {
-        resultDiv.textContent = 'Please select a PDF file first.';
-        return;
-    }
-    
-    const file = fileInput.files[0];
-    resultDiv.textContent = 'Converting...';
-    
-    try {
-        const result = await convertWithPdf2md(file, {
-            title: 'Test Document',
-            tags: 'test, pdf2md'
-        });
-        
-        resultDiv.innerHTML = `
-            <strong>Success:</strong> ${result.success}<br>
-            <strong>Message:</strong> ${result.message}<br>
-            <strong>Markdown Preview:</strong><br>
-            <pre>${result.markdown ? result.markdown.substring(0, 500) + '...' : 'No content'}</pre>
-        `;
-    } catch (error) {
-        resultDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
-    }
-});
-
-// Main upload functionality
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('fileInput');
-const selectButton = document.getElementById('selectButton');
-const fileList = document.getElementById('fileList');
-const fileItems = document.getElementById('fileItems');
-const metadataForm = document.getElementById('metadataForm');
-const convertButton = document.getElementById('convertButton');
-const progressSection = document.getElementById('progressSection');
-const resultsSection = document.getElementById('resultsSection');
-
-let selectedFiles = [];
-
-// File selection handlers
-selectButton.addEventListener('click', () => {
-    fileInput.click();
-});
-
-fileInput.addEventListener('change', (e) => {
-    addFiles(Array.from(e.target.files));
-});
-
-// Drag and drop handlers
-dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropZone.classList.add('dragover');
-});
-
-dropZone.addEventListener('dragleave', () => {
-    dropZone.classList.remove('dragover');
-});
-
-dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('dragover');
-    const files = Array.from(e.dataTransfer.files).filter(file => file.type === 'application/pdf');
-    addFiles(files);
-});
-
-function addFiles(files) {
-    selectedFiles = [...selectedFiles, ...files];
-    updateFileList();
-    showMetadataForm();
-}
-
-function updateFileList() {
-    if (selectedFiles.length === 0) {
-        fileList.style.display = 'none';
-        return;
-    }
-    
-    fileList.style.display = 'block';
-    fileItems.innerHTML = '';
-    
-    selectedFiles.forEach((file, index) => {
-        const fileItem = document.createElement('div');
-        fileItem.className = 'file-item';
-        fileItem.innerHTML = `
-            <div class="file-info">
-                <div class="file-name">${file.name}</div>
-                <div class="file-size">${formatFileSize(file.size)}</div>
-            </div>
-            <div class="file-actions">
-                <button class="button small-button" onclick="removeFile(${index})">Remove</button>
-            </div>
-        `;
-        fileItems.appendChild(fileItem);
-    });
-}
-
-function removeFile(index) {
-    selectedFiles.splice(index, 1);
-    updateFileList();
-    if (selectedFiles.length === 0) {
-        hideMetadataForm();
-    }
-}
-
-function showMetadataForm() {
-    metadataForm.style.display = 'block';
-}
-
-function hideMetadataForm() {
-    metadataForm.style.display = 'none';
-}
-
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
-// Conversion handler
-convertButton.addEventListener('click', async () => {
-    if (selectedFiles.length === 0) {
-        alert('Please select at least one PDF file');
-        return;
-    }
-    
-    const title = document.getElementById('title').value;
-    const tags = document.getElementById('tags').value;
-    const notes = document.getElementById('notes').value;
-    
-    const metadata = { title, tags, notes };
-    
-    progressSection.style.display = 'block';
-    resultsSection.style.display = 'block';
-    
-    const conversionResult = document.getElementById('conversionResult');
-    conversionResult.innerHTML = '';
-    
-    for (let i = 0; i < selectedFiles.length; i++) {
-        const file = selectedFiles[i];
-        const progress = Math.round(((i + 1) / selectedFiles.length) * 100);
-        
-        updateProgress(progress, `Converting ${file.name}...`);
-        
-        try {
-            const result = await convertWithPdf2md(file, metadata);
-            
-            const resultItem = document.createElement('div');
-            resultItem.className = result.success ? 'success' : 'error';
-            resultItem.innerHTML = `
-                <h5>${file.name}</h5>
-                <p><strong>Status:</strong> ${result.success ? 'Success' : 'Failed'}</p>
-                <p><strong>Message:</strong> ${result.message}</p>
-                ${result.markdown ? `<details><summary>Markdown Preview</summary><pre>${result.markdown.substring(0, 500)}...</pre></details>` : ''}
-            `;
-            conversionResult.appendChild(resultItem);
-            
-        } catch (error) {
-            const resultItem = document.createElement('div');
-            resultItem.className = 'error';
-            resultItem.innerHTML = `
-                <h5>${file.name}</h5>
-                <p><strong>Status:</strong> Failed</p>
-                <p><strong>Error:</strong> ${error.message}</p>
-            `;
-            conversionResult.appendChild(resultItem);
-        }
-    }
-    
-    updateProgress(100, 'Conversion complete!');
-});
-
-function updateProgress(percent, message) {
-    const progressFill = document.getElementById('progressFill');
-    const progressText = document.getElementById('progressText');
-    
-    progressFill.style.width = percent + '%';
-    progressText.textContent = message + ' (' + percent + '%)';
-}
-
-// Make removeFile function global
-window.removeFile = removeFile;
-</script>
-{% endblock %}
+</body>
+</html>
